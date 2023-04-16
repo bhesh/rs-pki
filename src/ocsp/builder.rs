@@ -115,9 +115,13 @@ impl OcspRequestBuilder {
         }
     }
 
-    pub fn build_and_sign<S, Sig>(&self, signer: &mut S) -> Result<OcspRequest>
+    pub fn build_and_sign<S, Sig>(
+        &self,
+        signer: &mut S,
+        certificate_chain: Option<Vec<Certificate>>,
+    ) -> Result<OcspRequest>
     where
-        S: Keypair<VerifyingKey = Certificate>,
+        S: Keypair,
         S: Signer<Sig>,
         S::VerifyingKey: EncodePublicKey,
         S::VerifyingKey: DynSignatureAlgorithmIdentifier,
@@ -131,7 +135,7 @@ impl OcspRequestBuilder {
         let optional_signature = Some(Signature {
             signature_algorithm,
             signature,
-            certs: Some(Vec::from([verifying_key])),
+            certs: certificate_chain,
         });
 
         Ok(OcspRequest {
