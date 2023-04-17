@@ -4,7 +4,7 @@ use crate::{
     cert::Certificate,
     error::{Error, Result},
     ocsp::{CertId, Version},
-    verify::verify,
+    verify::verify_by_oid,
 };
 use alloc::vec::Vec;
 use core::default::Default;
@@ -47,7 +47,7 @@ impl OcspRequest {
             Some(s) => s,
             None => return Err(Error::InvalidSignature),
         };
-        Ok(verify(oid, &public_key, &msg, &sig)?)
+        Ok(verify_by_oid(oid, &public_key, &msg, &sig)?)
     }
 }
 

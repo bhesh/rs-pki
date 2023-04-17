@@ -2,7 +2,7 @@
 
 use crate::{
     error::{Error, Result},
-    verify::verify,
+    verify::verify_by_oid,
 };
 use der::{asn1::BitString, pem::PemLabel, Encode, Sequence};
 use x509_cert::{request::CertReqInfo, spki::AlgorithmIdentifierOwned};
@@ -36,7 +36,7 @@ impl CertReq {
             None => return Err(Error::InvalidSignature),
         };
         let oid = &self.algorithm.oid;
-        Ok(verify(oid, &public_key, &msg, &sig)?)
+        Ok(verify_by_oid(oid, &public_key, &msg, &sig)?)
     }
 }
 

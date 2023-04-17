@@ -8,7 +8,7 @@ use sha1::Sha1;
 use sha2::{Sha224, Sha256, Sha384, Sha512};
 
 /// Validates the signature given an OID, public key, message, and signature
-pub(crate) fn verify(
+pub(crate) fn verify_by_oid(
     oid: &ObjectIdentifier,
     public_key: &[u8],
     msg: &[u8],
@@ -47,7 +47,7 @@ pub(crate) fn verify(
 #[cfg(test)]
 mod tests {
 
-    use crate::{error::Error, verify::verify};
+    use crate::{error::Error, verify::verify_by_oid};
     use der::{DecodePem, Encode};
     use x509_cert::Certificate;
 
@@ -88,7 +88,7 @@ VMhbXUpvpTLfrE9uM/R0W1X0j8YOl78=
             .as_bytes()
             .expect("signature is not octet-aligned");
         let oid = &cert.signature_algorithm.oid;
-        verify(oid, &public_key, &msg, &sig).expect("error verifying");
+        verify_by_oid(oid, &public_key, &msg, &sig).expect("error verifying");
     }
 
     #[test]
@@ -105,7 +105,7 @@ VMhbXUpvpTLfrE9uM/R0W1X0j8YOl78=
             .as_bytes()
             .expect("signature is not octet-aligned");
         let oid = &cert.signature_algorithm.oid;
-        match verify(oid, &public_key, &msg, &sig) {
+        match verify_by_oid(oid, &public_key, &msg, &sig) {
             Ok(_) => panic!("should not have been good"),
             Err(Error::Verification) => {}
             Err(e) => panic!("{:?}", e),

@@ -3,7 +3,7 @@
 use crate::{
     cert::Certificate,
     error::{Error, Result},
-    verify::verify,
+    verify::verify_by_oid,
 };
 use der::{asn1::BitString, Encode, Sequence, ValueOrd};
 use x509_cert::{crl::TbsCertList, spki::AlgorithmIdentifierOwned};
@@ -33,7 +33,7 @@ impl CertificateList {
             None => return Err(Error::InvalidSignature),
         };
         let oid = &self.signature_algorithm.oid;
-        Ok(verify(oid, &public_key, &msg, &sig)?)
+        Ok(verify_by_oid(oid, &public_key, &msg, &sig)?)
     }
 }
 

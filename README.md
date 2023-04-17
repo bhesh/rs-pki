@@ -5,16 +5,16 @@ A PKI library written in Rust.
 
 This library extends a lot of RustCrypto but adds some additional convenience functionality.
 
-# Modules
+## Modules
 
 * cert (Certificate Objects)
 * crl (Certificate List Objects)
 * ocsp (OCSP Objects)
 * req (Certificate Request Objects)
 
-# Examples
+## Examples
 
-## Certificate Verification
+### Certificate Verification
 
 ```rust
 use pki::cert::Certificate;
@@ -25,7 +25,7 @@ let cert = Certificate::from_pem(&cert_pem).expect("error parsing certificate");
 cert.verify(&issuer).expect("verification failed");
 ```
 
-## CRL Verification
+### CRL Verification
 
 ```rust
 use pki::{cert::Certificate, crl::CertificateList};
@@ -36,7 +36,7 @@ let crl = CertificateList::from_der(&crl_der).expect("error parsing CRL");
 crl.verify(&issuer).expect("verification failed");
 ```
 
-## CSR Verification
+### CSR Verification
 
 ```rust
 use pki::req::CertReq;
@@ -46,7 +46,7 @@ let req = CertReq::from_pem(&req_pem).expect("error parsing CSR");
 req.verify().expect("verification failed");
 ```
 
-## OCSP Verification
+### OCSP Verification
 
 ```rust
 use pki::{

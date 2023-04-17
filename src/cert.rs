@@ -2,7 +2,7 @@
 
 use crate::{
     error::{Error, Result},
-    verify::verify,
+    verify::verify_by_oid,
 };
 use der::{asn1::BitString, pem::PemLabel, Encode, Sequence, ValueOrd};
 use x509_cert::{spki::AlgorithmIdentifierOwned, TbsCertificate};
@@ -36,7 +36,7 @@ impl Certificate {
             None => return Err(Error::InvalidSignature),
         };
         let oid = &self.signature_algorithm.oid;
-        Ok(verify(oid, &public_key, &msg, &sig)?)
+        Ok(verify_by_oid(oid, &public_key, &msg, &sig)?)
     }
 }
 

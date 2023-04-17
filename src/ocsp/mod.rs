@@ -190,6 +190,14 @@ jxSZnE0qnsHhfTuvcqdFuhOWKU4Z0BqYBvQ3lBetoxi6PrABDJXWKTUgNX31EGDk
         );
         let basic_response = BasicOcspResponse::from_der(&response_bytes.response.as_bytes())
             .expect("error encoding response bytes");
+        // ocsp.digicert.com does not do nonces...
+        // 
+        // Probably because they're using their dogshit HID VA product for presigned responses.
+        //
+        // let ext = &basic_response.tbs_response_data.response_extensions.expect("no extensions")[0];
+        // assert_eq!(&ext.extn_id, &db::rfc6960::ID_PKIX_OCSP_NONCE);
+        // assert_eq!(ext.critical, false);
+        // assert_eq!(&ext.extn_value.as_bytes(), &NONCE);
         let single_response = &basic_response.tbs_response_data.responses[0];
         let cert_id = &single_response.cert_id;
         assert_eq!(&cert_id.issuer_name_hash.as_bytes(), &ISSUER_NAME_HASH);
