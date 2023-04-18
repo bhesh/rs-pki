@@ -1,11 +1,16 @@
 //! Signature Verification
 
 use crate::error::{Error, Result};
-use const_oid::{db, ObjectIdentifier};
+use const_oid::db::rfc5912::{
+    DSA_WITH_SHA_1, ECDSA_WITH_SHA_224, ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ECDSA_WITH_SHA_512,
+    SHA_1_WITH_RSA_ENCRYPTION, SHA_224_WITH_RSA_ENCRYPTION, SHA_256_WITH_RSA_ENCRYPTION,
+    SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
+};
+use der::asn1::ObjectIdentifier;
 use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, PublicKey, RsaPublicKey};
-use signature::digest::Digest;
 use sha1::Sha1;
 use sha2::{Sha224, Sha256, Sha384, Sha512};
+use signature::digest::Digest;
 
 /// Validates the signature given an OID, public key, message, and signature
 pub(crate) fn verify_by_oid(
@@ -15,31 +20,31 @@ pub(crate) fn verify_by_oid(
     sig: &[u8],
 ) -> Result<()> {
     match oid {
-        &db::rfc5912::SHA_1_WITH_RSA_ENCRYPTION => {
+        &SHA_1_WITH_RSA_ENCRYPTION => {
             let pk = RsaPublicKey::from_public_key_der(&public_key)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha1>(), &Sha1::digest(&msg), &sig)?)
         }
-        &db::rfc5912::SHA_224_WITH_RSA_ENCRYPTION => {
+        &SHA_224_WITH_RSA_ENCRYPTION => {
             let pk = RsaPublicKey::from_public_key_der(&public_key)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha224>(), &Sha224::digest(&msg), &sig)?)
         }
-        &db::rfc5912::SHA_256_WITH_RSA_ENCRYPTION => {
+        &SHA_256_WITH_RSA_ENCRYPTION => {
             let pk = RsaPublicKey::from_public_key_der(&public_key)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha256>(), &Sha256::digest(&msg), &sig)?)
         }
-        &db::rfc5912::SHA_384_WITH_RSA_ENCRYPTION => {
+        &SHA_384_WITH_RSA_ENCRYPTION => {
             let pk = RsaPublicKey::from_public_key_der(&public_key)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha384>(), &Sha384::digest(&msg), &sig)?)
         }
-        &db::rfc5912::SHA_512_WITH_RSA_ENCRYPTION => {
+        &SHA_512_WITH_RSA_ENCRYPTION => {
             let pk = RsaPublicKey::from_public_key_der(&public_key)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha512>(), &Sha512::digest(&msg), &sig)?)
         }
-        &db::rfc5912::DSA_WITH_SHA_1 => unimplemented!(),
-        &db::rfc5912::ECDSA_WITH_SHA_224 => unimplemented!(),
-        &db::rfc5912::ECDSA_WITH_SHA_256 => unimplemented!(),
-        &db::rfc5912::ECDSA_WITH_SHA_384 => unimplemented!(),
-        &db::rfc5912::ECDSA_WITH_SHA_512 => unimplemented!(),
+        &DSA_WITH_SHA_1 => unimplemented!(),
+        &ECDSA_WITH_SHA_224 => unimplemented!(),
+        &ECDSA_WITH_SHA_256 => unimplemented!(),
+        &ECDSA_WITH_SHA_384 => unimplemented!(),
+        &ECDSA_WITH_SHA_512 => unimplemented!(),
         _ => Err(Error::InvalidOid),
     }
 }

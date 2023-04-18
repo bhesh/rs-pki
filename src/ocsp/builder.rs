@@ -2,20 +2,16 @@
 
 use crate::{
     cert::Certificate,
-    ocsp::{CertId, OcspRequest, Request, Signature, TbsRequest, Version},
+    ocsp::{
+        ext::{AsExtension, Nonce},
+        CertId, OcspRequest, Request, Signature, TbsRequest, Version,
+    },
 };
 use alloc::vec::Vec;
-use const_oid::db;
-use der::{
-    asn1::{BitString, OctetString},
-    Encode,
-};
+use der::{asn1::BitString, Encode};
 use rand_core::CryptoRngCore;
 use signature::{Keypair, SignatureEncoding, Signer};
-use x509_cert::{
-    ext::{pkix::name::GeneralName, Extension},
-    spki::{DynSignatureAlgorithmIdentifier, EncodePublicKey},
-};
+use x509_cert::{ext::pkix::name::GeneralName, spki::DynSignatureAlgorithmIdentifier};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -52,12 +48,6 @@ pub struct OcspRequestBuilder {
 }
 
 impl OcspRequestBuilder {
-    /// Minimum size as defined in (proposed) [RFC 8954 Section 2.1]
-    const NONCE_MIN_SIZE: usize = 1;
-
-    /// Maximum size as defined in (proposed) [RFC 8954 Section 2.1]
-    const NONCE_MAX_SIZE: usize = 32;
-
     pub fn new(version: Version) -> Self {
         Self {
             tbs_request: TbsRequest {
@@ -86,33 +76,21 @@ impl OcspRequestBuilder {
         })
     }
 
-    pub fn with_extension(&mut self, extension: Extension) -> &mut OcspRequestBuilder {
+    pub fn with_extension<E: AsExtension>(&mut self, ext: E) -> Result<&mut OcspRequestBuilder> {
         if let Some(extensions) = self.tbs_request.request_extensions.as_mut() {
-            extensions.push(extension);
+            extensions.push(ext.to_extension()?);
         } else {
-            self.tbs_request.request_extensions = Some(Vec::from([extension]));
+            self.tbs_request.request_extensions = Some(Vec::from([ext.to_extension()?]));
         }
-        self
+        Ok(self)
     }
 
     pub fn with_nonce<R: CryptoRngCore>(
         &mut self,
         rng: &mut R,
-        size: usize,
+        length: usize,
     ) -> Result<&mut OcspRequestBuilder> {
-        if size < OcspRequestBuilder::NONCE_MIN_SIZE {
-            Err(Error::NonceTooSmall)
-        } else if size > OcspRequestBuilder::NONCE_MAX_SIZE {
-            Err(Error::NonceTooBig)
-        } else {
-            let mut random = [0u8; OcspRequestBuilder::NONCE_MAX_SIZE];
-            rng.fill_bytes(&mut random);
-            Ok(self.with_extension(Extension {
-                extn_id: db::rfc6960::ID_PKIX_OCSP_NONCE,
-                critical: false,
-                extn_value: OctetString::new(&random[0..size])?,
-            }))
-        }
+        self.with_extension(Nonce::generate(rng, length))
     }
 
     pub fn build_and_sign<S, Sig>(
@@ -123,7 +101,6 @@ impl OcspRequestBuilder {
     where
         S: Keypair,
         S: Signer<Sig>,
-        S::VerifyingKey: EncodePublicKey,
         S::VerifyingKey: DynSignatureAlgorithmIdentifier,
         Sig: SignatureEncoding,
     {

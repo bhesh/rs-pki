@@ -1,17 +1,16 @@
 //! OCSP Testing
 
 use const_oid::db;
-use der::{asn1::OctetString, Decode, DecodePem, Encode};
+use der::{Decode, DecodePem, Encode};
 use pki::{
     cert::Certificate,
     ocsp::{
-        builder::OcspRequestBuilder, BasicOcspResponse, CertId, CertStatus, OcspRequest,
-        OcspResponse, OcspResponseStatus, Version,
+        builder::OcspRequestBuilder, ext::Nonce, BasicOcspResponse, CertId, CertStatus,
+        OcspRequest, OcspResponse, OcspResponseStatus, Version,
     },
 };
 use sha1::Sha1;
 use std::{fs, io::Read};
-use x509_cert::ext::Extension;
 
 // OCSP Request Data:
 //     Version: 1 (0x0)
@@ -102,11 +101,8 @@ fn ocsp_build_request() {
             CertId::from_issuer::<Sha1>(&issuer, serial_number.clone())
                 .expect("failed to build CertId"),
         )
-        .with_extension(Extension {
-            extn_id: db::rfc6960::ID_PKIX_OCSP_NONCE,
-            critical: false,
-            extn_value: OctetString::new(NONCE).expect("failed to make nonce"),
-        })
+        .with_extension(Nonce::new(NONCE))
+        .expect("failed to build extension")
         .build();
     let mut ifile = fs::File::open("testdata/ocsp-amazon-req.der").expect("error opening file");
     let mut data = Vec::new();

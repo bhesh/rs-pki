@@ -7,8 +7,7 @@ use crate::{
     verify::verify_by_oid,
 };
 use alloc::vec::Vec;
-use core::default::Default;
-use core::option::Option;
+use core::{default::Default, option::Option};
 use der::{asn1::BitString, Encode, Sequence};
 use x509_cert::{
     ext::{pkix::name::GeneralName, Extensions},
@@ -25,7 +24,6 @@ use x509_cert::{
 ///
 /// [RFC 6960 Section 4.1.1]: https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
 #[derive(Clone, Debug, Eq, PartialEq, Sequence)]
-#[allow(missing_docs)]
 pub struct OcspRequest {
     pub tbs_request: TbsRequest,
 
@@ -63,7 +61,6 @@ impl OcspRequest {
 ///
 /// [RFC 6960 Section 4.1.1]: https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
 #[derive(Clone, Debug, Eq, PartialEq, Sequence)]
-#[allow(missing_docs)]
 pub struct TbsRequest {
     #[asn1(
         context_specific = "0",
@@ -92,7 +89,6 @@ pub struct TbsRequest {
 ///
 /// [RFC 6960 Section 4.1.1]: https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
 #[derive(Clone, Debug, Eq, PartialEq, Sequence)]
-#[allow(missing_docs)]
 pub struct Signature {
     pub signature_algorithm: AlgorithmIdentifierOwned,
     pub signature: BitString,
@@ -111,7 +107,6 @@ pub struct Signature {
 ///
 /// [RFC 6960 Section 4.1.1]: https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
 #[derive(Clone, Debug, Eq, PartialEq, Sequence)]
-#[allow(missing_docs)]
 pub struct Request {
     pub req_cert: CertId,
 
