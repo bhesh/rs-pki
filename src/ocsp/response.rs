@@ -6,14 +6,15 @@ use crate::{
     verify::verify_by_oid,
 };
 use alloc::vec::Vec;
-use core::default::Default;
-use core::option::Option;
+use const_oid::AssociatedOid;
+use core::{default::Default, option::Option};
 use der::{
     asn1::{
         GeneralizedTime, Null, {BitString, Ia5String, ObjectIdentifier, OctetString, Uint},
     },
     Any, Choice, Encode, Enumerated, Sequence,
 };
+use signature::digest::Digest;
 use x509_cert::{
     ext::{
         pkix::{AuthorityInfoAccessSyntax, CrlReason},
@@ -74,6 +75,23 @@ pub struct CertId {
     pub issuer_name_hash: OctetString,
     pub issuer_key_hash: OctetString,
     pub serial_number: SerialNumber,
+}
+
+impl CertId {
+    pub fn from_issuer<D: Digest + AssociatedOid>(
+        issuer: &Certificate,
+        serial_number: SerialNumber,
+    ) -> Result<Self> {
+        Ok(CertId {
+            hash_algorithm: AlgorithmIdentifierOwned {
+                oid: D::OID,
+                parameters: Some(Null.into()),
+            },
+            issuer_name_hash: OctetString::new(issuer.name_hash::<D>()?)?,
+            issuer_key_hash: OctetString::new(issuer.key_hash::<D>()?)?,
+            serial_number,
+        })
+    }
 }
 
 /// OCSPResponse structure as defined in [RFC 6960 Section 4.2.1].

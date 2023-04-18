@@ -1,10 +1,7 @@
 //! OCSP Testing
 
 use const_oid::db;
-use der::{
-    asn1::{Null, OctetString},
-    Decode, DecodePem, Encode,
-};
+use der::{asn1::OctetString, Decode, DecodePem, Encode};
 use pki::{
     cert::Certificate,
     ocsp::{
@@ -14,7 +11,7 @@ use pki::{
 };
 use sha1::Sha1;
 use std::{fs, io::Read};
-use x509_cert::{ext::Extension, spki::AlgorithmIdentifier};
+use x509_cert::ext::Extension;
 
 // OCSP Request Data:
 //     Version: 1 (0x0)
@@ -97,27 +94,14 @@ fn ocsp_build_request() {
     let cert = fs::read_to_string("testdata/amazon-crt.pem").expect("error reading file");
     let cert = Certificate::from_pem(&cert).expect("error formatting certificate");
 
-    let issuer_name_hash = issuer.name_hash::<Sha1>().expect("name hash failed");
-    assert_eq!(ISSUER_NAME_HASH, &issuer_name_hash, "name hash failed");
-
-    let issuer_key_hash = issuer.key_hash::<Sha1>().expect("key hash failed");
-    assert_eq!(ISSUER_KEY_HASH, &issuer_key_hash, "key hash failed");
-
     let serial_number = &cert.tbs_certificate.serial_number;
     assert_eq!(SERIAL_NUMBER, serial_number.as_bytes());
 
     let req = OcspRequestBuilder::new(Version::V1)
-        .with_certid(CertId {
-            hash_algorithm: AlgorithmIdentifier {
-                oid: db::rfc5912::ID_SHA_1,
-                parameters: Some(Null.into()),
-            },
-            issuer_name_hash: OctetString::new(issuer_name_hash.as_slice())
-                .expect("failed to make issuer name hash"),
-            issuer_key_hash: OctetString::new(issuer_key_hash.as_slice())
-                .expect("failed to make issuer key hash"),
-            serial_number: serial_number.clone(),
-        })
+        .with_certid(
+            CertId::from_issuer::<Sha1>(&issuer, serial_number.clone())
+                .expect("failed to build CertId"),
+        )
         .with_extension(Extension {
             extn_id: db::rfc6960::ID_PKIX_OCSP_NONCE,
             critical: false,
