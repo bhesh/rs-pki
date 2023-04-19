@@ -2,12 +2,14 @@
 
 use crate::{
     error::{Error, Result},
+    spki::AlgorithmIdentifierOwned,
     verify::verify_by_oid,
 };
 use alloc::vec::Vec;
 use der::{asn1::BitString, pem::PemLabel, Encode, Sequence, ValueOrd};
 use signature::digest::Digest;
-use x509_cert::{spki::AlgorithmIdentifierOwned, TbsCertificate};
+
+pub use x509_cert::certificate::{TbsCertificate, Version};
 
 /// Certificate
 ///

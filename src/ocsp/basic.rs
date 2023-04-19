@@ -2,23 +2,23 @@
 
 use crate::{
     cert::Certificate,
+    crl::{CertificateList, RevokedCert},
     error::{Error, Result},
-    verify::verify_by_oid,
-};
-use alloc::vec::Vec;
-use const_oid::AssociatedOid;
-use core::{default::Default, option::Option};
-use der::{
-    asn1::{BitString, GeneralizedTime, Null, OctetString},
-    Any, Choice, Encode, Enumerated, Sequence,
-};
-use signature::digest::Digest;
-use x509_cert::{
     ext::{pkix::CrlReason, Extensions},
     name::Name,
     serial_number::SerialNumber,
     spki::AlgorithmIdentifierOwned,
+    time::Time,
+    verify::verify_by_oid,
 };
+use alloc::vec::Vec;
+use const_oid::AssociatedOid;
+use core::{convert::TryFrom, default::Default, option::Option};
+use der::{
+    asn1::{BitString, GeneralizedTime, Null, OctetString},
+    Choice, Decode, Encode, Enumerated, Sequence,
+};
+use signature::digest::Digest;
 
 /// OCSP `Version` as defined in [RFC 6960 Section 4.1.1].
 ///
@@ -58,7 +58,7 @@ pub struct BasicOcspResponse {
     pub signature: BitString,
 
     #[asn1(context_specific = "0", optional = "true", tag_mode = "EXPLICIT")]
-    pub certs: Option<Vec<Any>>,
+    pub certs: Option<Vec<Certificate>>,
 }
 
 impl BasicOcspResponse {
@@ -159,6 +159,43 @@ pub struct SingleResponse {
     pub single_request_extensions: Option<Extensions>,
 }
 
+impl SingleResponse {
+    pub fn from_crl<D: Digest + AssociatedOid>(
+        crl: &CertificateList,
+        issuer: &Certificate,
+        serial_number: SerialNumber,
+    ) -> Result<Self> {
+        let cert_status = if let Some(revoked_certs) = &crl.tbs_cert_list.revoked_certificates {
+            let mut filter = revoked_certs
+                .iter()
+                .filter(|rc| rc.serial_number == serial_number)
+                .peekable();
+            match filter.next() {
+                None => CertStatus::Good(Null),
+                Some(rc) => CertStatus::Revoked(rc.try_into()?),
+            }
+        } else {
+            CertStatus::Good(Null)
+        };
+        Ok(SingleResponse {
+            cert_id: CertId::from_issuer::<D>(issuer, serial_number)?,
+            cert_status,
+            this_update: match &crl.tbs_cert_list.this_update {
+                Time::UtcTime(t) => GeneralizedTime::from_date_time(t.to_date_time()),
+                Time::GeneralTime(t) => t.clone(),
+            },
+            next_update: match crl.tbs_cert_list.next_update {
+                Some(t) => Some(match t {
+                    Time::UtcTime(t) => GeneralizedTime::from_date_time(t.to_date_time()),
+                    Time::GeneralTime(t) => t.clone(),
+                }),
+                None => None,
+            },
+            single_request_extensions: None,
+        })
+    }
+}
+
 /// CertID structure as defined in [RFC 6960 Section 4.1.1].
 ///
 /// ```text
@@ -232,6 +269,56 @@ pub struct RevokedInfo {
 
     #[asn1(context_specific = "0", optional = "true", tag_mode = "EXPLICIT")]
     pub revocation_reason: Option<CrlReason>,
+}
+
+impl TryFrom<RevokedCert> for RevokedInfo {
+    type Error = Error;
+
+    fn try_from(rc: RevokedCert) -> core::result::Result<Self, Self::Error> {
+        Ok(Self {
+            revocation_time: match rc.revocation_date {
+                Time::UtcTime(t) => GeneralizedTime::from_date_time(t.to_date_time()),
+                Time::GeneralTime(t) => t.clone(),
+            },
+            revocation_reason: if let Some(extensions) = &rc.crl_entry_extensions {
+                let mut filter = extensions
+                    .iter()
+                    .filter(|ext| ext.extn_id == CrlReason::OID)
+                    .peekable();
+                match filter.next() {
+                    None => None,
+                    Some(ext) => Some(CrlReason::from_der(ext.extn_value.as_bytes())?),
+                }
+            } else {
+                None
+            },
+        })
+    }
+}
+
+impl TryFrom<&RevokedCert> for RevokedInfo {
+    type Error = Error;
+
+    fn try_from(rc: &RevokedCert) -> core::result::Result<Self, Self::Error> {
+        Ok(Self {
+            revocation_time: match rc.revocation_date {
+                Time::UtcTime(t) => GeneralizedTime::from_date_time(t.to_date_time()),
+                Time::GeneralTime(t) => t.clone(),
+            },
+            revocation_reason: if let Some(extensions) = &rc.crl_entry_extensions {
+                let mut filter = extensions
+                    .iter()
+                    .filter(|ext| ext.extn_id == CrlReason::OID)
+                    .peekable();
+                match filter.next() {
+                    None => None,
+                    Some(ext) => Some(CrlReason::from_der(ext.extn_value.as_bytes())?),
+                }
+            } else {
+                None
+            },
+        })
+    }
 }
 
 /// RevokedInfo structure as defined in [RFC 6960 Section 4.2.1].

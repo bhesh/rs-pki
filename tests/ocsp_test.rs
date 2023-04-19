@@ -1,16 +1,23 @@
 //! OCSP Testing
 
 use const_oid::db;
-use der::{Decode, DecodePem, Encode};
+use der::{asn1::GeneralizedTime, Decode, DecodePem, Encode};
 use pki::{
     cert::Certificate,
+    crl::CertificateList,
+    ext::pkix::CrlReason,
     ocsp::{
-        builder::OcspRequestBuilder, ext::Nonce, BasicOcspResponse, CertId, CertStatus,
-        OcspRequest, OcspResponse, OcspResponseStatus, Version,
+        builder::{BasicOcspResponseBuilder, OcspRequestBuilder},
+        ext::Nonce,
+        BasicOcspResponse, CertId, CertStatus, OcspRequest, OcspResponse, OcspResponseStatus,
+        ResponderId, SingleResponse, Version,
     },
+    serial_number::SerialNumber,
 };
+use rsa::{pkcs1v15::SigningKey, pkcs8::DecodePrivateKey, RsaPrivateKey};
 use sha1::Sha1;
-use std::{fs, io::Read};
+use sha2::Sha256;
+use std::{fs, io::Read, time::Duration};
 
 // OCSP Request Data:
 //     Version: 1 (0x0)
@@ -94,7 +101,11 @@ fn ocsp_build_request() {
     let cert = Certificate::from_pem(&cert).expect("error formatting certificate");
 
     let serial_number = &cert.tbs_certificate.serial_number;
-    assert_eq!(SERIAL_NUMBER, serial_number.as_bytes());
+    assert_eq!(
+        SERIAL_NUMBER,
+        serial_number.as_bytes(),
+        "serial number mismatch"
+    );
 
     let req = OcspRequestBuilder::new(Version::V1)
         .with_certid(
@@ -116,12 +127,17 @@ fn ocsp_response_sanity() {
     let mut res = Vec::new();
     ifile.read_to_end(&mut res).expect("error reading file");
     let res = OcspResponse::from_der(&res).expect("error loading OCSP response");
-    assert_eq!(res.response_status, OcspResponseStatus::Successful);
+    assert_eq!(
+        res.response_status,
+        OcspResponseStatus::Successful,
+        "invalid response status"
+    );
 
     let response_bytes = &res.response_bytes.expect("no response data");
     assert_eq!(
         &response_bytes.response_type,
-        &db::rfc6960::ID_PKIX_OCSP_BASIC
+        &db::rfc6960::ID_PKIX_OCSP_BASIC,
+        "response type mismatch"
     );
     let basic_response = BasicOcspResponse::from_der(&response_bytes.response.as_bytes())
         .expect("error encoding response bytes");
@@ -135,9 +151,21 @@ fn ocsp_response_sanity() {
     let single_response = &basic_response.tbs_response_data.responses[0];
 
     let cert_id = &single_response.cert_id;
-    assert_eq!(&cert_id.issuer_name_hash.as_bytes(), &ISSUER_NAME_HASH);
-    assert_eq!(&cert_id.issuer_key_hash.as_bytes(), &ISSUER_KEY_HASH);
-    assert_eq!(&cert_id.serial_number.as_bytes(), &SERIAL_NUMBER);
+    assert_eq!(
+        &cert_id.issuer_name_hash.as_bytes(),
+        &ISSUER_NAME_HASH,
+        "issuer name hash mismatch"
+    );
+    assert_eq!(
+        &cert_id.issuer_key_hash.as_bytes(),
+        &ISSUER_KEY_HASH,
+        "issuer key hash mismatch"
+    );
+    assert_eq!(
+        &cert_id.serial_number.as_bytes(),
+        &SERIAL_NUMBER,
+        "serial number mismatch"
+    );
 
     let cert_status = &single_response.cert_status;
     match cert_status {
@@ -155,15 +183,124 @@ fn ocsp_verify_response() {
     let mut res = Vec::new();
     ifile.read_to_end(&mut res).expect("error reading file");
     let res = OcspResponse::from_der(&res).expect("error loading OCSP response");
-    assert_eq!(res.response_status, OcspResponseStatus::Successful);
+    assert_eq!(
+        res.response_status,
+        OcspResponseStatus::Successful,
+        "invalid response status"
+    );
 
     let response_bytes = &res.response_bytes.expect("no response data");
     assert_eq!(
         &response_bytes.response_type,
-        &db::rfc6960::ID_PKIX_OCSP_BASIC
+        &db::rfc6960::ID_PKIX_OCSP_BASIC,
+        "response type mismatch"
     );
     let basic_response = BasicOcspResponse::from_der(&response_bytes.response.as_bytes())
         .expect("error encoding response bytes");
 
     basic_response.verify(&issuer).expect("verification failed");
+}
+
+#[test]
+fn ocsp_build_response() {
+    let signing_key =
+        fs::read_to_string("testdata/rsa2048-sha256-key.pem").expect("error reading file");
+    let signing_key =
+        RsaPrivateKey::from_pkcs8_pem(&signing_key).expect("error formatting signing key");
+    let signing_key = SigningKey::<Sha256>::new_with_prefix(signing_key);
+
+    let public_cert =
+        fs::read_to_string("testdata/rsa2048-sha256-crt.pem").expect("error reading file");
+    let public_cert = Certificate::from_pem(&public_cert).expect("error formatting signing cert");
+
+    let issuer = fs::read_to_string("testdata/GoodCACert.pem").expect("error reading file");
+    let issuer = Certificate::from_pem(&issuer).expect("error formatting issuer");
+
+    let mut crl = Vec::new();
+    let mut crl_file = fs::File::open("testdata/GoodCACRL.crl").expect("error opening CRL");
+    crl_file.read_to_end(&mut crl).expect("error reading CRL");
+    let crl = CertificateList::from_der(&crl).expect("error formatting CRL");
+
+    // Build response
+    let res = OcspResponse::successful(
+        BasicOcspResponseBuilder::new(
+            Version::V1,
+            ResponderId::ByName(public_cert.tbs_certificate.subject.clone()),
+            GeneralizedTime::from_unix_duration(Duration::from_secs(0))
+                .expect("error making produced_at"),
+        )
+        .with_single_response(
+            SingleResponse::from_crl::<Sha1>(
+                &crl,
+                &issuer,
+                SerialNumber::new(&[0xFu8]).expect("error making serial number"),
+            )
+            .expect("error making single response"),
+        )
+        .build_and_sign(&signing_key, Some(Vec::from([public_cert.clone()])))
+        .expect("error signing response"),
+    )
+    .expect("error encoding ocsp response");
+
+    // Read response
+    let basic_response = BasicOcspResponse::from_der(
+        &res.response_bytes
+            .expect("no response data")
+            .response
+            .as_bytes(),
+    )
+    .expect("error encoding basic response");
+    assert_eq!(
+        basic_response.tbs_response_data.version,
+        Version::V1,
+        "version mismatch"
+    );
+    match &basic_response.tbs_response_data.responder_id {
+        ResponderId::ByName(name) => assert_eq!(
+            name, &public_cert.tbs_certificate.subject,
+            "responder ID mismatch"
+        ),
+        _ => panic!("responder ID should be ByName"),
+    }
+    assert_eq!(
+        &basic_response.tbs_response_data.produced_at,
+        &GeneralizedTime::from_unix_duration(Duration::from_secs(0))
+            .expect("error making generalized time"),
+        "Produced at mismatch"
+    );
+    let single_response = &basic_response.tbs_response_data.responses[0];
+    let cert_id = &single_response.cert_id;
+    assert_eq!(
+        &cert_id.issuer_name_hash.as_bytes(),
+        &issuer.name_hash::<Sha1>().expect("error making name hash"),
+        "issuer name hash mismatch"
+    );
+    assert_eq!(
+        &cert_id.issuer_key_hash.as_bytes(),
+        &issuer.key_hash::<Sha1>().expect("error making key hash"),
+        "issuer key hash mismatch"
+    );
+    assert_eq!(&cert_id.serial_number.as_bytes(), &[0xF]);
+    let cert_status = &single_response.cert_status;
+    match cert_status {
+        CertStatus::Revoked(rc) => {
+            assert_eq!(
+                &rc.revocation_time,
+                &GeneralizedTime::from_unix_duration(Duration::from_secs(1262334601))
+                    .expect("error making generalized time"),
+                "revocation time mismatch"
+            );
+            match &rc.revocation_reason {
+                Some(CrlReason::KeyCompromise) => {}
+                Some(_) => panic!("CrlReason is not KeyCompromise"),
+                None => panic!("No revocation reason"),
+            }
+        }
+        _ => panic!("status is not revoked"),
+    };
+
+    // Verify response
+    basic_response
+        .verify(&public_cert)
+        .expect("verification failed");
 }

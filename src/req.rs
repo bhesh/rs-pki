@@ -2,10 +2,12 @@
 
 use crate::{
     error::{Error, Result},
+    spki::AlgorithmIdentifierOwned,
     verify::verify_by_oid,
 };
 use der::{asn1::BitString, pem::PemLabel, Encode, Sequence};
-use x509_cert::{request::CertReqInfo, spki::AlgorithmIdentifierOwned};
+
+pub use x509_cert::request::{CertReqInfo, ExtensionReq, Version};
 
 /// CertReq
 ///
