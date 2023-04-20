@@ -3,10 +3,10 @@
 use crate::{
     error::{Error, Result},
     req::CertReqInfo,
-    spki::AlgorithmIdentifierOwned,
     verify::verify_by_oid,
 };
 use der::{asn1::BitString, pem::PemLabel, Encode, Sequence};
+use spki::AlgorithmIdentifierOwned;
 
 /// CertReq
 ///

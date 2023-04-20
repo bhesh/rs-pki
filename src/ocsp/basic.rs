@@ -7,7 +7,6 @@ use crate::{
     ext::{pkix::CrlReason, Extensions},
     name::Name,
     serial_number::SerialNumber,
-    spki::AlgorithmIdentifierOwned,
     time::Time,
     verify::verify_by_oid,
 };
@@ -19,6 +18,7 @@ use der::{
     Choice, Decode, Encode, Enumerated, Sequence,
 };
 use signature::digest::Digest;
+use spki::AlgorithmIdentifierOwned;
 
 /// OCSP `Version` as defined in [RFC 6960 Section 4.1.1].
 ///

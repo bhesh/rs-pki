@@ -22,6 +22,7 @@ rsa = { version = "0.9.0-pre.1", default-features = false, features = ["pem", "p
 sha1 = { version = "0.10.5", default-features = false, features = ["oid"] }
 sha2 = { version = "0.10.6", default-features = false, features = ["oid"] }
 signature = { version = "2.1.0", default-features = false, features = ["digest", "rand_core"] }
+spki = { version = "0.7.1", default-features = false, features = ["alloc"] }
 x509-cert = { version = "0.2.1", default-features = false, features = ["pem"] }
 
 [dev-dependencies]

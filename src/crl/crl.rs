@@ -3,10 +3,10 @@
 use crate::{
     cert::Certificate,
     error::{Error, Result},
-    spki::AlgorithmIdentifierOwned,
     verify::verify_by_oid,
 };
 use der::{asn1::BitString, Encode, Sequence, ValueOrd};
+use spki::AlgorithmIdentifierOwned;
 
 pub use x509_cert::crl::{RevokedCert, TbsCertList};
 

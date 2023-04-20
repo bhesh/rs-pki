@@ -7,7 +7,6 @@ use crate::{
         ext::AsExtension, BasicOcspResponse, OcspRequest, Request, ResponderId, ResponseData,
         Signature, SingleResponse, TbsRequest, Version,
     },
-    spki::DynSignatureAlgorithmIdentifier,
 };
 use alloc::vec::Vec;
 use der::{
@@ -15,6 +14,7 @@ use der::{
     Encode,
 };
 use signature::{SignatureEncoding, Signer};
+use spki::DynSignatureAlgorithmIdentifier;
 
 pub type Result<T> = core::result::Result<T, Error>;
 

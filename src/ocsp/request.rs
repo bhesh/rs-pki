@@ -6,7 +6,6 @@ use crate::{
     ext::{pkix::name::GeneralName, Extensions},
     ocsp::{CertId, Version},
     serial_number::SerialNumber,
-    spki::AlgorithmIdentifierOwned,
     verify::verify_by_oid,
 };
 use alloc::vec::Vec;
@@ -14,6 +13,7 @@ use const_oid::AssociatedOid;
 use core::{default::Default, option::Option};
 use der::{asn1::BitString, Encode, Sequence};
 use signature::digest::Digest;
+use spki::AlgorithmIdentifierOwned;
 
 /// OCSPRequest structure as defined in [RFC 6960 Section 4.1.1].
 ///

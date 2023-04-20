@@ -3,12 +3,12 @@
 use crate::{
     cert::TbsCertificate,
     error::{Error, Result},
-    spki::AlgorithmIdentifierOwned,
     verify::verify_by_oid,
 };
 use alloc::vec::Vec;
 use der::{asn1::BitString, pem::PemLabel, Encode, Sequence, ValueOrd};
 use signature::digest::Digest;
+use spki::AlgorithmIdentifierOwned;
 
 /// Certificate
 ///
