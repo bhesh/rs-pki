@@ -13,7 +13,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use const_oid::AssociatedOid;
-use core::{convert::TryFrom, default::Default, option::Option};
+use core::{default::Default, option::Option};
 use der::{
     asn1::{BitString, GeneralizedTime, Null, OctetString},
     Choice, Decode, Encode, Enumerated, Sequence,
@@ -62,9 +62,12 @@ pub struct BasicOcspResponse {
 }
 
 impl BasicOcspResponse {
-    /// Verifies the OCSP Response given the issuer
-    pub fn verify(&self, issuer: &Certificate) -> Result<()> {
-        let public_key = issuer.tbs_certificate.subject_public_key_info.to_der()?;
+    /// Verifies the OCSP Response given the signing cert
+    pub fn verify(&self, signing_cert: &Certificate) -> Result<()> {
+        let public_key = signing_cert
+            .tbs_certificate
+            .subject_public_key_info
+            .to_der()?;
         let oid = &self.signature_algorithm.oid;
         let msg = self.tbs_response_data.to_der()?;
         let sig = match self.signature.as_bytes() {
@@ -106,7 +109,7 @@ pub struct ResponseData {
 /// ResponderID structure as defined in [RFC 6960 Section 4.2.1].
 ///
 /// ```text
-// ResponderID ::= CHOICE {
+/// ResponderID ::= CHOICE {
 ///    byName              [1] Name,
 ///    byKey               [2] KeyHash }
 /// ```
@@ -156,23 +159,29 @@ pub struct SingleResponse {
     pub next_update: Option<GeneralizedTime>,
 
     #[asn1(context_specific = "1", optional = "true", tag_mode = "EXPLICIT")]
-    pub single_request_extensions: Option<Extensions>,
+    pub single_extensions: Option<Extensions>,
 }
 
 impl SingleResponse {
+    /// Generates the `SingleResponse` from the CRL. If the provided serial is not listed in the CRL,
+    /// the status is set to `Good`. If it is, it tries to convert `RevokedCert` into
+    /// `RevokedInfo`. The revocation reason is set to `None` if it fails to parse the `CrlReason`
+    /// extension.
     pub fn from_crl<D: Digest + AssociatedOid>(
         crl: &CertificateList,
         issuer: &Certificate,
         serial_number: SerialNumber,
+        this_update: GeneralizedTime,
+        next_update: Option<GeneralizedTime>,
+        single_extensions: Option<Extensions>,
     ) -> Result<Self> {
         let cert_status = if let Some(revoked_certs) = &crl.tbs_cert_list.revoked_certificates {
             let mut filter = revoked_certs
                 .iter()
-                .filter(|rc| rc.serial_number == serial_number)
-                .peekable();
+                .filter(|rc| rc.serial_number == serial_number);
             match filter.next() {
                 None => CertStatus::Good(Null),
-                Some(rc) => CertStatus::Revoked(rc.try_into()?),
+                Some(rc) => CertStatus::Revoked(rc.into()),
             }
         } else {
             CertStatus::Good(Null)
@@ -180,18 +189,9 @@ impl SingleResponse {
         Ok(SingleResponse {
             cert_id: CertId::from_issuer::<D>(issuer, serial_number)?,
             cert_status,
-            this_update: match &crl.tbs_cert_list.this_update {
-                Time::UtcTime(t) => GeneralizedTime::from_date_time(t.to_date_time()),
-                Time::GeneralTime(t) => t.clone(),
-            },
-            next_update: match crl.tbs_cert_list.next_update {
-                Some(t) => Some(match t {
-                    Time::UtcTime(t) => GeneralizedTime::from_date_time(t.to_date_time()),
-                    Time::GeneralTime(t) => t.clone(),
-                }),
-                None => None,
-            },
-            single_request_extensions: None,
+            this_update,
+            next_update,
+            single_extensions,
         })
     }
 }
@@ -216,6 +216,8 @@ pub struct CertId {
 }
 
 impl CertId {
+    /// Generates the CertId fields by hashing the issuer name and keys. This method will fail with
+    /// invalid DER encoding.
     pub fn from_issuer<D: Digest + AssociatedOid>(
         issuer: &Certificate,
         serial_number: SerialNumber,
@@ -271,11 +273,9 @@ pub struct RevokedInfo {
     pub revocation_reason: Option<CrlReason>,
 }
 
-impl TryFrom<RevokedCert> for RevokedInfo {
-    type Error = Error;
-
-    fn try_from(rc: RevokedCert) -> core::result::Result<Self, Self::Error> {
-        Ok(Self {
+impl From<RevokedCert> for RevokedInfo {
+    fn from(rc: RevokedCert) -> Self {
+        Self {
             revocation_time: match rc.revocation_date {
                 Time::UtcTime(t) => GeneralizedTime::from_date_time(t.to_date_time()),
                 Time::GeneralTime(t) => t.clone(),
@@ -283,24 +283,24 @@ impl TryFrom<RevokedCert> for RevokedInfo {
             revocation_reason: if let Some(extensions) = &rc.crl_entry_extensions {
                 let mut filter = extensions
                     .iter()
-                    .filter(|ext| ext.extn_id == CrlReason::OID)
-                    .peekable();
+                    .filter(|ext| ext.extn_id == CrlReason::OID);
                 match filter.next() {
                     None => None,
-                    Some(ext) => Some(CrlReason::from_der(ext.extn_value.as_bytes())?),
+                    Some(ext) => match CrlReason::from_der(ext.extn_value.as_bytes()) {
+                        Ok(reason) => Some(reason),
+                        Err(_) => None,
+                    },
                 }
             } else {
                 None
             },
-        })
+        }
     }
 }
 
-impl TryFrom<&RevokedCert> for RevokedInfo {
-    type Error = Error;
-
-    fn try_from(rc: &RevokedCert) -> core::result::Result<Self, Self::Error> {
-        Ok(Self {
+impl From<&RevokedCert> for RevokedInfo {
+    fn from(rc: &RevokedCert) -> Self {
+        Self {
             revocation_time: match rc.revocation_date {
                 Time::UtcTime(t) => GeneralizedTime::from_date_time(t.to_date_time()),
                 Time::GeneralTime(t) => t.clone(),
@@ -308,16 +308,18 @@ impl TryFrom<&RevokedCert> for RevokedInfo {
             revocation_reason: if let Some(extensions) = &rc.crl_entry_extensions {
                 let mut filter = extensions
                     .iter()
-                    .filter(|ext| ext.extn_id == CrlReason::OID)
-                    .peekable();
+                    .filter(|ext| ext.extn_id == CrlReason::OID);
                 match filter.next() {
                     None => None,
-                    Some(ext) => Some(CrlReason::from_der(ext.extn_value.as_bytes())?),
+                    Some(ext) => match CrlReason::from_der(ext.extn_value.as_bytes()) {
+                        Ok(reason) => Some(reason),
+                        Err(_) => None,
+                    },
                 }
             } else {
                 None
             },
-        })
+        }
     }
 }
 

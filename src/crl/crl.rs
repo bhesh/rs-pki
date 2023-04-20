@@ -27,8 +27,8 @@ pub struct CertificateList {
 
 impl CertificateList {
     /// Verifies the CRL given the CA
-    pub fn verify(&self, issuer: &Certificate) -> Result<()> {
-        let public_key = issuer.tbs_certificate.subject_public_key_info.to_der()?;
+    pub fn verify(&self, ca: &Certificate) -> Result<()> {
+        let public_key = ca.tbs_certificate.subject_public_key_info.to_der()?;
         let msg = self.tbs_cert_list.to_der()?;
         let sig = match self.signature.as_bytes() {
             Some(s) => s,

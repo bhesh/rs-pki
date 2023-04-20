@@ -1,6 +1,7 @@
 //! X.509 Certificates
 
 use crate::{
+    cert::TbsCertificate,
     error::{Error, Result},
     spki::AlgorithmIdentifierOwned,
     verify::verify_by_oid,
@@ -8,8 +9,6 @@ use crate::{
 use alloc::vec::Vec;
 use der::{asn1::BitString, pem::PemLabel, Encode, Sequence, ValueOrd};
 use signature::digest::Digest;
-
-pub use x509_cert::certificate::{TbsCertificate, Version};
 
 /// Certificate
 ///
@@ -31,12 +30,12 @@ impl PemLabel for Certificate {
 }
 
 impl Certificate {
-    /// Gets the hash of the certificte's name
+    /// Generates the hash of the certificte's name
     pub fn name_hash<D: Digest>(&self) -> Result<Vec<u8>> {
         Ok(D::digest(&self.tbs_certificate.subject.to_der()?).to_vec())
     }
 
-    /// Gets the hash of the certificte's key
+    /// Generates the hash of the certificte's key
     pub fn key_hash<D: Digest>(&self) -> Result<Vec<u8>> {
         let key_bytes = match self
             .tbs_certificate

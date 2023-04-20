@@ -4,9 +4,8 @@ use crate::{
     cert::Certificate,
     ext::pkix::name::GeneralName,
     ocsp::{
-        ext::{AsExtension, Nonce},
-        BasicOcspResponse, CertId, OcspRequest, Request, ResponderId, ResponseData, Signature,
-        SingleResponse, TbsRequest, Version,
+        ext::AsExtension, BasicOcspResponse, OcspRequest, Request, ResponderId, ResponseData,
+        Signature, SingleResponse, TbsRequest, Version,
     },
     spki::DynSignatureAlgorithmIdentifier,
 };
@@ -15,7 +14,6 @@ use der::{
     asn1::{BitString, GeneralizedTime},
     Encode,
 };
-use rand_core::CryptoRngCore;
 use signature::{SignatureEncoding, Signer};
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -53,6 +51,7 @@ pub struct OcspRequestBuilder {
 }
 
 impl OcspRequestBuilder {
+    /// Creates an `OcspRequestBuilder` given the version
     pub fn new(version: Version) -> Self {
         Self {
             tbs_request: TbsRequest {
@@ -64,23 +63,19 @@ impl OcspRequestBuilder {
         }
     }
 
+    /// Adds a `RequestorName` to the OCSP request
     pub fn with_requestor_name(&mut self, name: GeneralName) -> &mut OcspRequestBuilder {
         self.tbs_request.requestor_name = Some(name);
         self
     }
 
+    /// Adds a `Request` to the OCSP request
     pub fn with_request(&mut self, request: Request) -> &mut OcspRequestBuilder {
         self.tbs_request.request_list.push(request);
         self
     }
 
-    pub fn with_certid(&mut self, cert_id: CertId) -> &mut OcspRequestBuilder {
-        self.with_request(Request {
-            req_cert: cert_id,
-            single_request_extensions: None,
-        })
-    }
-
+    /// Adds an `Extension` to the OCSP request
     pub fn with_extension<E: AsExtension>(&mut self, ext: E) -> Result<&mut OcspRequestBuilder> {
         if let Some(extensions) = self.tbs_request.request_extensions.as_mut() {
             extensions.push(ext.to_extension()?);
@@ -90,14 +85,7 @@ impl OcspRequestBuilder {
         Ok(self)
     }
 
-    pub fn with_nonce<R: CryptoRngCore>(
-        &mut self,
-        rng: &mut R,
-        length: usize,
-    ) -> Result<&mut OcspRequestBuilder> {
-        self.with_extension(Nonce::generate(rng, length))
-    }
-
+    /// Builds the OCSP request
     pub fn build(&self) -> OcspRequest {
         OcspRequest {
             tbs_request: self.tbs_request.clone(),
@@ -105,6 +93,7 @@ impl OcspRequestBuilder {
         }
     }
 
+    /// Builds and signs the OCSP request
     pub fn build_and_sign<S, Sig>(
         &self,
         signer: &mut S,
@@ -136,6 +125,7 @@ pub struct BasicOcspResponseBuilder {
 }
 
 impl BasicOcspResponseBuilder {
+    /// Creates a new `BasicOcspResponseBuilder`
     pub fn new(version: Version, responder_id: ResponderId, produced_at: GeneralizedTime) -> Self {
         BasicOcspResponseBuilder {
             tbs_response: ResponseData {
@@ -148,6 +138,7 @@ impl BasicOcspResponseBuilder {
         }
     }
 
+    /// Adds a `SingleResponse` to the OCSP response
     pub fn with_single_response(
         &mut self,
         single_response: SingleResponse,
@@ -156,7 +147,11 @@ impl BasicOcspResponseBuilder {
         self
     }
 
-    pub fn with_extension<E: AsExtension>(&mut self, ext: E) -> Result<&mut BasicOcspResponseBuilder> {
+    /// Adds an `Extension` to the OCSP response
+    pub fn with_extension<E: AsExtension>(
+        &mut self,
+        ext: E,
+    ) -> Result<&mut BasicOcspResponseBuilder> {
         if let Some(extensions) = self.tbs_response.response_extensions.as_mut() {
             extensions.push(ext.to_extension()?);
         } else {
@@ -165,6 +160,7 @@ impl BasicOcspResponseBuilder {
         Ok(self)
     }
 
+    /// Builds and signs the OCSP response
     pub fn build_and_sign<S, Sig>(
         &self,
         signer: &S,

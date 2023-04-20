@@ -1,5 +1,10 @@
 //! OCSP Extensions
 
+use crate::{
+    ext::{pkix::AuthorityInfoAccessSyntax, Extension},
+    name::Name,
+    spki::AlgorithmIdentifierOwned,
+};
 use alloc::vec::Vec;
 use const_oid::db::rfc6960::{
     ID_PKIX_OCSP_ARCHIVE_CUTOFF, ID_PKIX_OCSP_CRL, ID_PKIX_OCSP_NONCE, ID_PKIX_OCSP_PREF_SIG_ALGS,
@@ -10,11 +15,6 @@ use der::{
     Encode, Sequence,
 };
 use rand_core::CryptoRngCore;
-use x509_cert::{
-    ext::{pkix::AuthorityInfoAccessSyntax, Extension},
-    name::Name,
-    spki::AlgorithmIdentifierOwned,
-};
 
 /// Helps simplify the coversion of OCSP extensions
 pub trait AsExtension {

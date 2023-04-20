@@ -3,16 +3,17 @@
 use crate::{
     cert::Certificate,
     error::{Error, Result},
+    ext::{pkix::name::GeneralName, Extensions},
     ocsp::{CertId, Version},
+    serial_number::SerialNumber,
+    spki::AlgorithmIdentifierOwned,
     verify::verify_by_oid,
 };
 use alloc::vec::Vec;
+use const_oid::AssociatedOid;
 use core::{default::Default, option::Option};
 use der::{asn1::BitString, Encode, Sequence};
-use x509_cert::{
-    ext::{pkix::name::GeneralName, Extensions},
-    spki::AlgorithmIdentifierOwned,
-};
+use signature::digest::Digest;
 
 /// OCSPRequest structure as defined in [RFC 6960 Section 4.1.1].
 ///
@@ -112,4 +113,19 @@ pub struct Request {
 
     #[asn1(context_specific = "0", optional = "true", tag_mode = "EXPLICIT")]
     pub single_request_extensions: Option<Extensions>,
+}
+
+impl Request {
+    /// Generates the `Request` by hashing the issuer name and keys. This method will fail with
+    /// invalid DER encoding.
+    pub fn from_issuer<D: Digest + AssociatedOid>(
+        issuer: &Certificate,
+        serial_number: SerialNumber,
+        single_request_extensions: Option<Extensions>,
+    ) -> Result<Self> {
+        Ok(Self {
+            req_cert: CertId::from_issuer::<D>(issuer, serial_number)?,
+            single_request_extensions,
+        })
+    }
 }

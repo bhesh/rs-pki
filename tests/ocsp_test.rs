@@ -9,10 +9,11 @@ use pki::{
     ocsp::{
         builder::{BasicOcspResponseBuilder, OcspRequestBuilder},
         ext::Nonce,
-        BasicOcspResponse, CertId, CertStatus, OcspRequest, OcspResponse, OcspResponseStatus,
+        BasicOcspResponse, CertStatus, OcspRequest, OcspResponse, OcspResponseStatus, Request,
         ResponderId, SingleResponse, Version,
     },
     serial_number::SerialNumber,
+    time::Time,
 };
 use rsa::{pkcs1v15::SigningKey, pkcs8::DecodePrivateKey, RsaPrivateKey};
 use sha1::Sha1;
@@ -108,8 +109,8 @@ fn ocsp_build_request() {
     );
 
     let req = OcspRequestBuilder::new(Version::V1)
-        .with_certid(
-            CertId::from_issuer::<Sha1>(&issuer, serial_number.clone())
+        .with_request(
+            Request::from_issuer::<Sha1>(&issuer, serial_number.clone(), None)
                 .expect("failed to build CertId"),
         )
         .with_extension(Nonce::new(NONCE))
@@ -234,6 +235,18 @@ fn ocsp_build_response() {
                 &crl,
                 &issuer,
                 SerialNumber::new(&[0xFu8]).expect("error making serial number"),
+                match &crl.tbs_cert_list.this_update {
+                    Time::UtcTime(t) => GeneralizedTime::from_date_time(t.to_date_time()),
+                    Time::GeneralTime(t) => t.clone(),
+                },
+                match &crl.tbs_cert_list.next_update {
+                    Some(time) => match time {
+                        Time::UtcTime(t) => Some(GeneralizedTime::from_date_time(t.to_date_time())),
+                        Time::GeneralTime(t) => Some(t.clone()),
+                    },
+                    None => None,
+                },
+                None,
             )
             .expect("error making single response"),
         )
