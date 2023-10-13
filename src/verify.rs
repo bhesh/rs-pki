@@ -56,7 +56,7 @@ mod tests {
     use der::{DecodePem, Encode};
     use x509_cert::Certificate;
 
-    const PUBLIC_PEM: &str = "-----BEGIN CERTIFICATE-----
+    const PUBLIC_RSA_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIDEzCCAfugAwIBAgIUZ+evGd94OegJAuRime281jEJh7UwDQYJKoZIhvcNAQEL
 BQAwGTEXMBUGA1UEAwwOcnNhMjA0OC1zaGEyNTYwHhcNMjMwNDE0MTUwNzQzWhcN
 MjYwNDEzMTUwNzQzWjAZMRcwFQYDVQQDDA5yc2EyMDQ4LXNoYTI1NjCCASIwDQYJ
@@ -76,9 +76,40 @@ QmOnlIJzMJB81/BUqxmJPApOjFumHc4Vx362V/uCbnwHKlO1m8kgilaOsXzFz+/h
 VMhbXUpvpTLfrE9uM/R0W1X0j8YOl78=
 -----END CERTIFICATE-----";
 
+    const PUBLIC_DSA_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIC3zCCAo+gAwIBAgIUScfg9Juor91XL05UwxHY1VUg3WMwCQYHKoZIzjgEAzAX
+MRUwEwYDVQQDDAxkc2ExMDI0LXNoYTEwHhcNMjMxMDEzMTc1MDQ5WhcNMjYxMDEy
+MTc1MDQ5WjAXMRUwEwYDVQQDDAxkc2ExMDI0LXNoYTEwggG+MIIBMwYHKoZIzjgE
+ATCCASYCgYEApj9FbCbGtUJmmPItS1pb/d7YlOF/03+sYoW6LP1GijQNkCFd/oJd
+eE/p6edmVq+SVo0wxp95ciT0YOFvQIrBtxzTEReysBNPHlcKRAq7LjL4kp5qQ7uC
+NrJEQ2XGOXN49A/AyGgdYIpjDv+F40X6U2wWsuSwXfI7x3GtEc8/u1cCHQCEcpAa
+kdpHwCygwJbswxIUV3/S16Bo5InpND97AoGAY6mXOI9wYst/ptZo0NtJCdTRz/0d
+EQ67TRITn8pXco0F8q1ZMCu/SvZOb/EHlIphQJsbIe/rxQVQCWGKtEoVAXlJYo9c
+k/OQ3utGKV+S/ZI3ZANXVoK60eFbgGdRoSPNY6V5lguGAJlhI7Bm04u03wYwZpoI
+Vldfo/tQOWRXmn4DgYQAAoGAGeTWi4hw30/o0rhb3RKaBDFVnvVVOrX3YJibJ501
+Wph5wTJwsVHR+/uvysp//C7cMVEMvpahwTCOWRrAUOv1kiAVn/LqkHeJBhYFwXiK
+wy0R26eBzAUT1b46vTLfdpcSh4cPlRNKZEQ0uDFwldsEd9q/dOWya6qEFC4VuNlJ
+5f+jUzBRMB0GA1UdDgQWBBRhaS16sliQ2KwwNDUZdX4uLnd3bzAfBgNVHSMEGDAW
+gBRhaS16sliQ2KwwNDUZdX4uLnd3bzAPBgNVHRMBAf8EBTADAQH/MAkGByqGSM44
+BAMDPwAwPAIcUA9Z1qttjWiUVMy+yD2qrswW0tSVgLJbUHldLgIcDHBC1pmrCucH
+5DDxQ6OQ7sx+b4NDAkBHg4R4aQ==
+-----END CERTIFICATE-----";
+
+    const PUBLIC_ECDSA_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIBhzCCAS6gAwIBAgIUNiMsVY3N8JSgKz9AC2MJ1zIBZ2wwCgYIKoZIzj0EAwIw
+GzEZMBcGA1UEAwwQc2VjcDI1NmsxLXNoYTI1NjAeFw0yMzEwMTMxNzUwNDlaFw0y
+NjEwMTIxNzUwNDlaMBsxGTAXBgNVBAMMEHNlY3AyNTZrMS1zaGEyNTYwVjAQBgcq
+hkjOPQIBBgUrgQQACgNCAAS8cvVDW8lH87eRMtq3lGFZsovlGQaJYM+xAwDHEkd2
+2Yq1y3Ain5nhScPGlcMB1gS60V6E7h7Qq7uMW46Xgv2wo1MwUTAdBgNVHQ4EFgQU
+Q5hTAlql2smm4GAurVD/sPANumQwHwYDVR0jBBgwFoAUQ5hTAlql2smm4GAurVD/
+sPANumQwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBEAiAU2+3FJOFL
+EeSunFPkrKQj8xjzIIxAWqbG0GzsWnCHmQIgRZsWYDaCnCT5el0Dd4tYWwQw6Jl2
+z1ZJeNatu6tCqXw=
+-----END CERTIFICATE-----";
+
     #[test]
     fn verify_rsa_good_from_oid() {
-        let cert = Certificate::from_pem(&PUBLIC_PEM).expect("error parsing certificate");
+        let cert = Certificate::from_pem(&PUBLIC_RSA_PEM).expect("error parsing certificate");
         let public_key = cert
             .tbs_certificate
             .subject_public_key_info
@@ -98,7 +129,7 @@ VMhbXUpvpTLfrE9uM/R0W1X0j8YOl78=
 
     #[test]
     fn verify_rsa_bad_from_oid() {
-        let cert = Certificate::from_pem(&PUBLIC_PEM).expect("error parsing certificate");
+        let cert = Certificate::from_pem(&PUBLIC_RSA_PEM).expect("error parsing certificate");
         let public_key = cert
             .tbs_certificate
             .subject_public_key_info
