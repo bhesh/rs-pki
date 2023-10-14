@@ -22,9 +22,15 @@ mod verify;
 pub use const_oid;
 pub use der;
 pub use rand_core;
-pub use rsa;
-pub use sha1;
-pub use sha2;
 pub use signature;
 pub use spki;
 pub use x509_cert::{anchor, attr, ext, name, serial_number, time};
+
+#[cfg(feature = "rsa")]
+pub use rsa;
+
+#[cfg(feature = "sha1")]
+pub use sha1;
+
+#[cfg(feature = "sha2")]
+pub use sha2;

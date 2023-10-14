@@ -39,14 +39,18 @@ impl OcspRequest {
             Some(s) => s,
             None => return Err(Error::Verification),
         };
-        let public_key = issuer.tbs_certificate.subject_public_key_info.to_der()?;
         let oid = &signature.signature_algorithm.oid;
         let msg = self.tbs_request.to_der()?;
         let sig = match signature.signature.as_bytes() {
             Some(s) => s,
             None => return Err(Error::InvalidSignature),
         };
-        Ok(verify_by_oid(oid, &public_key, &msg, &sig)?)
+        Ok(verify_by_oid(
+            oid,
+            &issuer.tbs_certificate.subject_public_key_info,
+            &msg,
+            &sig,
+        )?)
     }
 }
 

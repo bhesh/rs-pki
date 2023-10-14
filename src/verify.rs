@@ -2,57 +2,154 @@
 
 use crate::error::{Error, Result};
 use alloc::format;
+use der::{
+    asn1::{BitString, ObjectIdentifier},
+    Any, Encode,
+};
+use sha1::Sha1;
+use signature::{digest::Digest, DigestVerifier};
+use spki::{DecodePublicKey, SubjectPublicKeyInfo};
+
+#[cfg(feature = "dsa")]
+use const_oid::db::rfc5912::DSA_WITH_SHA_1;
+
+#[cfg(feature = "dsa")]
+use dsa;
+
+#[cfg(feature = "ecdsa")]
 use const_oid::db::rfc5912::{
-    DSA_WITH_SHA_1, ECDSA_WITH_SHA_224, ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ECDSA_WITH_SHA_512,
+    ECDSA_WITH_SHA_224, ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ECDSA_WITH_SHA_512,
+    ID_EC_PUBLIC_KEY, SECP_224_R_1, SECP_256_R_1, SECP_384_R_1, SECP_521_R_1,
+};
+
+#[cfg(feature = "ecdsa")]
+const SECP_256_K_1: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.10");
+
+#[cfg(feature = "ecdsa")]
+const SECP_192_R_1: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.10045.3.1.1");
+
+#[cfg(feature = "ecdsa")]
+use ecdsa;
+
+#[cfg(feature = "ecdsa")]
+use k256;
+
+#[cfg(feature = "ecdsa")]
+use p192;
+
+#[cfg(feature = "ecdsa")]
+use p224;
+
+#[cfg(feature = "ecdsa")]
+use p256;
+
+#[cfg(feature = "ecdsa")]
+use p384;
+
+#[cfg(feature = "ecdsa")]
+use p521;
+
+#[cfg(feature = "rsa")]
+use const_oid::db::rfc5912::{
     SHA_1_WITH_RSA_ENCRYPTION, SHA_224_WITH_RSA_ENCRYPTION, SHA_256_WITH_RSA_ENCRYPTION,
     SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
 };
-use der::asn1::ObjectIdentifier;
-use dsa;
-use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, PublicKey, RsaPublicKey};
-use sha1::Sha1;
+
+#[cfg(feature = "rsa")]
+use rsa::{Pkcs1v15Sign, PublicKey, RsaPublicKey};
+
+#[cfg(feature = "sha2")]
 use sha2::{Sha224, Sha256, Sha384, Sha512};
-use signature::{digest::Digest, DigestVerifier};
+
+#[cfg(feature = "ecdsa")]
+fn verify_ecdsa<D: Digest>(
+    oid: &ObjectIdentifier,
+    public_key: &SubjectPublicKeyInfo<Any, BitString>,
+    msg: &[u8],
+    sig: &[u8],
+    ) -> Result<()> {
+    if &public_key.algorithm.oid != &ID_EC_PUBLIC_KEY {
+        return Err(Error::InvalidKey);
+    }
+    let ec_type = ObjectIdentifier::from_bytes(
+        public_key
+        .algorithm
+        .parameters
+        .as_ref()
+        .ok_or(Error::InvalidKey)?
+        .value(),
+        )
+        .or(Err(Error::InvalidAsn1))?;
+    match &ec_type {
+        &SECP_256_K_1 => {
+            let pk = ecdsa::VerifyingKey::<k256::Secp256k1>::from_sec1_bytes(&public_key.to_der()?).or(Err(Error::InvalidKey))?;
+            let sig = ecdsa::Signature::<k256::Secp256k1>::from_der(&sig).or(Err(Error::InvalidSignature))?;
+            pk.verify_digest(D::new_with_prefix(&msg), &sig)
+                .or(Err(Error::Verification))
+        }
+        &SECP_192_R_1 => Ok(()),
+        &SECP_224_R_1 => Ok(()),
+        &SECP_256_R_1 => Ok(()),
+        &SECP_384_R_1 => Ok(()),
+        &SECP_521_R_1 => Ok(()),
+        _ => Err(Error::InvalidOid),
+    }
+    /*
+       let pk =
+       ecdsa::VerifyingKey::from_sec1_bytes(&public_key.to_der()?).or(Err(Error::InvalidKey))?;
+       let sig = ecdsa::Signature::from_slice(sig).or(Err(Error::InvalidSignature))?;
+       Ok(pk
+       .verify_digest(Sha224::new_with_prefix(&msg), &sig)
+       .or(Err(Error::Verification))?)
+       */
+}
 
 /// Validates the signature given an OID, public key, message, and signature
 pub(crate) fn verify_by_oid(
     oid: &ObjectIdentifier,
-    public_key: &[u8],
+    public_key: &SubjectPublicKeyInfo<Any, BitString>,
     msg: &[u8],
     sig: &[u8],
-) -> Result<()> {
+    ) -> Result<()> {
     match oid {
+        #[cfg(feature = "rsa")]
         &SHA_1_WITH_RSA_ENCRYPTION => {
-            let pk = RsaPublicKey::from_public_key_der(&public_key)?;
+            let pk = RsaPublicKey::from_public_key_der(&public_key.to_der()?)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha1>(), &Sha1::digest(&msg), &sig)?)
         }
+        #[cfg(all(feature = "rsa", feature = "sha2"))]
         &SHA_224_WITH_RSA_ENCRYPTION => {
-            let pk = RsaPublicKey::from_public_key_der(&public_key)?;
+            let pk = RsaPublicKey::from_public_key_der(&public_key.to_der()?)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha224>(), &Sha224::digest(&msg), &sig)?)
         }
+        #[cfg(all(feature = "rsa", feature = "sha2"))]
         &SHA_256_WITH_RSA_ENCRYPTION => {
-            let pk = RsaPublicKey::from_public_key_der(&public_key)?;
+            let pk = RsaPublicKey::from_public_key_der(&public_key.to_der()?)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha256>(), &Sha256::digest(&msg), &sig)?)
         }
+        #[cfg(all(feature = "rsa", feature = "sha2"))]
         &SHA_384_WITH_RSA_ENCRYPTION => {
-            let pk = RsaPublicKey::from_public_key_der(&public_key)?;
+            let pk = RsaPublicKey::from_public_key_der(&public_key.to_der()?)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha384>(), &Sha384::digest(&msg), &sig)?)
         }
+        #[cfg(all(feature = "rsa", feature = "sha2"))]
         &SHA_512_WITH_RSA_ENCRYPTION => {
-            let pk = RsaPublicKey::from_public_key_der(&public_key)?;
+            let pk = RsaPublicKey::from_public_key_der(&public_key.to_der()?)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha512>(), &Sha512::digest(&msg), &sig)?)
         }
+        #[cfg(feature = "dsa")]
         &DSA_WITH_SHA_1 => {
-            let pk = dsa::VerifyingKey::from_public_key_der(&public_key)?;
+            let pk = dsa::VerifyingKey::from_public_key_der(&public_key.to_der()?)?;
             let sig = dsa::Signature::try_from(sig).or(Err(Error::InvalidSignature))?;
-            Ok(pk
+            pk
                 .verify_digest(Sha1::new_with_prefix(&msg), &sig)
-                .or(Err(Error::Verification))?)
+                .or(Err(Error::Verification))
         }
-        &ECDSA_WITH_SHA_224 => unimplemented!(),
-        &ECDSA_WITH_SHA_256 => unimplemented!(),
-        &ECDSA_WITH_SHA_384 => unimplemented!(),
-        &ECDSA_WITH_SHA_512 => unimplemented!(),
+        #[cfg(feature = "ecdsa")]
+        &ECDSA_WITH_SHA_224 => verify_ecdsa::<Sha224>::(oid, public_key, msg, sig),
+        &ECDSA_WITH_SHA_256 => verify_ecdsa::<Sha256>::(oid, public_key, msg, sig),
+        &ECDSA_WITH_SHA_384 => verify_ecdsa::<Sha384>::(oid, public_key, msg, sig),
+        &ECDSA_WITH_SHA_512 => verify_ecdsa::<Sha512>::(oid, public_key, msg, sig),
         _ => Err(Error::InvalidOid),
     }
 }
@@ -103,7 +200,19 @@ BAMDPwAwPAIcUA9Z1qttjWiUVMy+yD2qrswW0tSVgLJbUHldLgIcDHBC1pmrCucH
 5DDxQ6OQ7sx+b4NDAkBHg4R4aQ==
 -----END CERTIFICATE-----";
 
-    const PUBLIC_ECDSA_PEM: &str = "-----BEGIN CERTIFICATE-----
+    const PUBLIC_P256_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIBjTCCATOgAwIBAgIUYCOlE5IXQA3Pm81y/ztQp9RwQ6YwCgYIKoZIzj0EAwIw
+HDEaMBgGA1UEAwwRcHJpbWUyNTZ2MS1zaGEyNTYwHhcNMjMxMDEzMTc1MDQ5WhcN
+MjYxMDEyMTc1MDQ5WjAcMRowGAYDVQQDDBFwcmltZTI1NnYxLXNoYTI1NjBZMBMG
+ByqGSM49AgEGCCqGSM49AwEHA0IABLglB6XI74Zgw5oGbj9ZruTyi1QDX0IoLOfs
+VGU9HEK+3HhedD/OotoW+gK/TGTsFSd8gs6i7DJ6prLWT6flK++jUzBRMB0GA1Ud
+DgQWBBTMS7AELri6/SOCLM6j+7F5+rRCfjAfBgNVHSMEGDAWgBTMS7AELri6/SOC
+LM6j+7F5+rRCfjAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0gAMEUCIQCZ
+m1STOY98Ac9eiNkciws5iT07qLV9xm2lT2os06tFygIgNoIawfR+MAMVcxpWVDpL
+1mMyecyuP5PWqLOJX68V0X8=
+-----END CERTIFICATE-----";
+
+    const PUBLIC_SECP256_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIBhzCCAS6gAwIBAgIUNiMsVY3N8JSgKz9AC2MJ1zIBZ2wwCgYIKoZIzj0EAwIw
 GzEZMBcGA1UEAwwQc2VjcDI1NmsxLXNoYTI1NjAeFw0yMzEwMTMxNzUwNDlaFw0y
 NjEwMTIxNzUwNDlaMBsxGTAXBgNVBAMMEHNlY3AyNTZrMS1zaGEyNTYwVjAQBgcq
@@ -115,13 +224,21 @@ EeSunFPkrKQj8xjzIIxAWqbG0GzsWnCHmQIgRZsWYDaCnCT5el0Dd4tYWwQw6Jl2
 z1ZJeNatu6tCqXw=
 -----END CERTIFICATE-----";
 
+    const PUBLIC_SECP384_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIByTCCAU6gAwIBAgIUC0n/qC9e8eBDn26HMHSCpDCUMEswCgYIKoZIzj0EAwMw
+GzEZMBcGA1UEAwwQc2VjcDM4NHIxLXNoYTM4NDAeFw0yMzEwMTMxNzUwNDlaFw0y
+NjEwMTIxNzUwNDlaMBsxGTAXBgNVBAMMEHNlY3AzODRyMS1zaGEzODQwdjAQBgcq
+hkjOPQIBBgUrgQQAIgNiAAQzu64YQGBuu09dY+62Skfa3FTT7mmirIRJOJxM6zHi
+dbbNRNLgymDZB1Iabs6qmj7GoH5MTxVreXWdtCE8Mv+ilXbPZ+6OZievEpL+MM3b
+PPbzOyBClnI8OYGFaRzAo+ajUzBRMB0GA1UdDgQWBBTiPayVyjuWoO+kQSgn1n0H
+mZe62DAfBgNVHSMEGDAWgBTiPayVyjuWoO+kQSgn1n0HmZe62DAPBgNVHRMBAf8E
+BTADAQH/MAoGCCqGSM49BAMDA2kAMGYCMQCGyfbKoxFPZdCeMX19d2hxJ1aBkabe
+uqgkVU8b2qH1K2dD1Yo0oZeEMokCi4wT3GICMQC9LyxUDCTIdWf7aiItb4IAhD62
+feJ1lBQG6TVQjHNympur2T0aXwEMPD8MpicY2H8=
+-----END CERTIFICATE-----";
+
     fn verify_good(pem: &str) {
         let cert = Certificate::from_pem(&pem).expect("error parsing certificate");
-        let public_key = cert
-            .tbs_certificate
-            .subject_public_key_info
-            .to_der()
-            .expect("error encoding public key");
         let msg = cert
             .tbs_certificate
             .to_der()
@@ -131,46 +248,92 @@ z1ZJeNatu6tCqXw=
             .as_bytes()
             .expect("signature is not octet-aligned");
         let oid = &cert.signature_algorithm.oid;
-        verify_by_oid(oid, &public_key, &msg, &sig).expect("error verifying");
+        verify_by_oid(
+            oid,
+            &cert.tbs_certificate.subject_public_key_info,
+            &msg,
+            &sig,
+            )
+            .expect("error verifying");
     }
 
     fn verify_bad(pem: &str) {
         let cert = Certificate::from_pem(&pem).expect("error parsing certificate");
-        let public_key = cert
-            .tbs_certificate
-            .subject_public_key_info
-            .to_der()
-            .expect("error encoding public key");
         let msg = cert.to_der().expect("error encoding message");
         let sig = cert
             .signature
             .as_bytes()
             .expect("signature is not octet-aligned");
         let oid = &cert.signature_algorithm.oid;
-        match verify_by_oid(oid, &public_key, &msg, &sig) {
+        match verify_by_oid(
+            oid,
+            &cert.tbs_certificate.subject_public_key_info,
+            &msg,
+            &sig,
+            ) {
             Ok(_) => panic!("should not have been good"),
             Err(Error::Verification) => {}
             Err(e) => panic!("{:?}", e),
         }
     }
 
+    #[cfg(all(feature = "rsa", feature = "sha2"))]
     #[test]
     fn verify_rsa_good_from_oid() {
         verify_good(&PUBLIC_RSA_PEM);
     }
 
+    #[cfg(all(feature = "rsa", feature = "sha2"))]
     #[test]
     fn verify_rsa_bad_from_oid() {
         verify_bad(&PUBLIC_RSA_PEM);
     }
 
+    #[cfg(feature = "dsa")]
     #[test]
     fn verify_dsa_good_from_oid() {
         verify_good(&PUBLIC_DSA_PEM);
     }
 
+    #[cfg(feature = "dsa")]
     #[test]
     fn verify_dsa_bad_from_oid() {
         verify_bad(&PUBLIC_DSA_PEM);
+    }
+
+    #[cfg(feature = "ecdsa")]
+    #[test]
+    fn verify_p256_good_from_oid() {
+        verify_good(&PUBLIC_P256_PEM);
+    }
+
+    #[cfg(feature = "ecdsa")]
+    #[test]
+    fn verify_p256_bad_from_oid() {
+        verify_bad(&PUBLIC_P256_PEM);
+    }
+
+    #[cfg(feature = "ecdsa")]
+    #[test]
+    fn verify_secp256_good_from_oid() {
+        verify_good(&PUBLIC_SECP256_PEM);
+    }
+
+    #[cfg(feature = "ecdsa")]
+    #[test]
+    fn verify_secp256_bad_from_oid() {
+        verify_bad(&PUBLIC_SECP256_PEM);
+    }
+
+    #[cfg(feature = "ecdsa")]
+    #[test]
+    fn verify_secp384_good_from_oid() {
+        verify_good(&PUBLIC_SECP384_PEM);
+    }
+
+    #[cfg(feature = "ecdsa")]
+    #[test]
+    fn verify_secp384_bad_from_oid() {
+        verify_bad(&PUBLIC_SECP384_PEM);
     }
 }

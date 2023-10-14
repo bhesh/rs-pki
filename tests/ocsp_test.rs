@@ -15,10 +15,14 @@ use pki::{
     serial_number::SerialNumber,
     time::Time,
 };
-use rsa::{pkcs1v15::SigningKey, pkcs8::DecodePrivateKey, RsaPrivateKey};
 use sha1::Sha1;
-use sha2::Sha256;
 use std::{fs, io::Read, time::Duration};
+
+#[cfg(feature = "rsa")]
+use rsa::{pkcs1v15::SigningKey, pkcs8::DecodePrivateKey, RsaPrivateKey};
+
+#[cfg(feature = "sha2")]
+use sha2::Sha256;
 
 // OCSP Request Data:
 //     Version: 1 (0x0)
@@ -175,6 +179,7 @@ fn ocsp_response_sanity() {
     };
 }
 
+#[cfg(all(feature = "rsa", feature = "sha2"))]
 #[test]
 fn ocsp_verify_response() {
     let issuer = fs::read_to_string("testdata/digicert-ca.pem").expect("error reading file");
@@ -202,6 +207,7 @@ fn ocsp_verify_response() {
     basic_response.verify(&issuer).expect("verification failed");
 }
 
+#[cfg(all(feature = "rsa", feature = "sha2"))]
 #[test]
 fn ocsp_build_response() {
     let signing_key =

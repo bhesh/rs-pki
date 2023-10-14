@@ -30,13 +30,12 @@ impl PemLabel for CertReq {
 impl CertReq {
     /// Verifies the CSR signature with its own public key
     pub fn verify(&self) -> Result<()> {
-        let public_key = self.info.public_key.to_der()?;
         let msg = self.info.to_der()?;
         let sig = match self.signature.as_bytes() {
             Some(s) => s,
             None => return Err(Error::InvalidSignature),
         };
         let oid = &self.algorithm.oid;
-        Ok(verify_by_oid(oid, &public_key, &msg, &sig)?)
+        Ok(verify_by_oid(oid, &self.info.public_key, &msg, &sig)?)
     }
 }

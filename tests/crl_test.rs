@@ -11,6 +11,7 @@ fn load_crl() -> CertificateList {
     CertificateList::from_der(&crl).expect("error parsing CRL")
 }
 
+#[cfg(all(feature = "rsa", feature = "sha2"))]
 #[test]
 fn crl_verify_rsa_good() {
     let cert = fs::read_to_string("testdata/GoodCACert.pem").expect("error reading ca file");
@@ -19,6 +20,7 @@ fn crl_verify_rsa_good() {
     crl.verify(&cert).expect("error verifying");
 }
 
+#[cfg(all(feature = "rsa", feature = "sha2"))]
 #[test]
 fn crl_verify_rsa_bad() {
     let cert = fs::read_to_string("testdata/rsa2048-sha256-crt.pem")

@@ -4,6 +4,7 @@ use der::DecodePem;
 use pki::{cert::Certificate, error::Error};
 use std::fs;
 
+#[cfg(feature = "rsa")]
 #[test]
 fn cert_verify_rsa_sha1_good() {
     let cert =
@@ -12,6 +13,7 @@ fn cert_verify_rsa_sha1_good() {
     cert.verify(&cert).expect("error verifying");
 }
 
+#[cfg(feature = "rsa")]
 #[test]
 fn cert_verify_rsa_sha1_bad() {
     let cert1 =
@@ -27,6 +29,7 @@ fn cert_verify_rsa_sha1_bad() {
     }
 }
 
+#[cfg(all(feature = "rsa", feature = "sha2"))]
 #[test]
 fn cert_verify_rsa_sha256_good() {
     let cert =
@@ -35,6 +38,7 @@ fn cert_verify_rsa_sha256_good() {
     cert.verify(&cert).expect("error verifying");
 }
 
+#[cfg(all(feature = "rsa", feature = "sha2"))]
 #[test]
 fn cert_verify_rsa_sha256_bad() {
     let cert1 =

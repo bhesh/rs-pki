@@ -25,6 +25,7 @@ pub enum Error {
     /// Encoding errors
     InvalidAsn1,
 
+    #[cfg(feature = "rsa")]
     /// RSA errors
     Rsa(rsa::errors::Error),
 
@@ -38,15 +39,16 @@ impl From<der::Error> for Error {
     }
 }
 
-impl From<rsa::pkcs8::spki::Error> for Error {
-    fn from(error: rsa::pkcs8::spki::Error) -> Self {
+impl From<spki::Error> for Error {
+    fn from(error: spki::Error) -> Self {
         match error {
-            rsa::pkcs8::spki::Error::OidUnknown { .. } => Error::InvalidOid,
+            spki::Error::OidUnknown { .. } => Error::InvalidOid,
             _ => Error::InvalidAsn1,
         }
     }
 }
 
+#[cfg(feature = "rsa")]
 impl From<rsa::errors::Error> for Error {
     fn from(error: rsa::errors::Error) -> Self {
         match error {

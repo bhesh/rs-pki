@@ -4,6 +4,7 @@ use pki::{error::Error, req::CertReq};
 use der::{asn1::BitString, DecodePem};
 use std::fs;
 
+#[cfg(all(feature = "rsa", feature = "sha2"))]
 #[test]
 fn req_verify_rsa_good() {
     let req = fs::read_to_string("testdata/rsa2048-sha256-req.pem").expect("error reading CSR");
@@ -11,6 +12,7 @@ fn req_verify_rsa_good() {
     req.verify().expect("error verifying");
 }
 
+#[cfg(all(feature = "rsa", feature = "sha2"))]
 #[test]
 fn req_verify_rsa_bad() {
     let req = fs::read_to_string("testdata/rsa2048-sha256-req.pem").expect("error reading CSR");
