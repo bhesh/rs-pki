@@ -1,16 +1,18 @@
 //! Signature Verification
 
 use crate::error::{Error, Result};
+use alloc::format;
 use const_oid::db::rfc5912::{
     DSA_WITH_SHA_1, ECDSA_WITH_SHA_224, ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ECDSA_WITH_SHA_512,
     SHA_1_WITH_RSA_ENCRYPTION, SHA_224_WITH_RSA_ENCRYPTION, SHA_256_WITH_RSA_ENCRYPTION,
     SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
 };
 use der::asn1::ObjectIdentifier;
+use dsa;
 use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, PublicKey, RsaPublicKey};
 use sha1::Sha1;
 use sha2::{Sha224, Sha256, Sha384, Sha512};
-use signature::digest::Digest;
+use signature::{digest::Digest, DigestVerifier};
 
 /// Validates the signature given an OID, public key, message, and signature
 pub(crate) fn verify_by_oid(
@@ -40,7 +42,13 @@ pub(crate) fn verify_by_oid(
             let pk = RsaPublicKey::from_public_key_der(&public_key)?;
             Ok(pk.verify(Pkcs1v15Sign::new::<Sha512>(), &Sha512::digest(&msg), &sig)?)
         }
-        &DSA_WITH_SHA_1 => unimplemented!(),
+        &DSA_WITH_SHA_1 => {
+            let pk = dsa::VerifyingKey::from_public_key_der(&public_key)?;
+            let sig = dsa::Signature::try_from(sig).or(Err(Error::InvalidSignature))?;
+            Ok(pk
+                .verify_digest(Sha1::new_with_prefix(&msg), &sig)
+                .or(Err(Error::Verification))?)
+        }
         &ECDSA_WITH_SHA_224 => unimplemented!(),
         &ECDSA_WITH_SHA_256 => unimplemented!(),
         &ECDSA_WITH_SHA_384 => unimplemented!(),
@@ -107,9 +115,8 @@ EeSunFPkrKQj8xjzIIxAWqbG0GzsWnCHmQIgRZsWYDaCnCT5el0Dd4tYWwQw6Jl2
 z1ZJeNatu6tCqXw=
 -----END CERTIFICATE-----";
 
-    #[test]
-    fn verify_rsa_good_from_oid() {
-        let cert = Certificate::from_pem(&PUBLIC_RSA_PEM).expect("error parsing certificate");
+    fn verify_good(pem: &str) {
+        let cert = Certificate::from_pem(&pem).expect("error parsing certificate");
         let public_key = cert
             .tbs_certificate
             .subject_public_key_info
@@ -127,9 +134,8 @@ z1ZJeNatu6tCqXw=
         verify_by_oid(oid, &public_key, &msg, &sig).expect("error verifying");
     }
 
-    #[test]
-    fn verify_rsa_bad_from_oid() {
-        let cert = Certificate::from_pem(&PUBLIC_RSA_PEM).expect("error parsing certificate");
+    fn verify_bad(pem: &str) {
+        let cert = Certificate::from_pem(&pem).expect("error parsing certificate");
         let public_key = cert
             .tbs_certificate
             .subject_public_key_info
@@ -146,5 +152,25 @@ z1ZJeNatu6tCqXw=
             Err(Error::Verification) => {}
             Err(e) => panic!("{:?}", e),
         }
+    }
+
+    #[test]
+    fn verify_rsa_good_from_oid() {
+        verify_good(&PUBLIC_RSA_PEM);
+    }
+
+    #[test]
+    fn verify_rsa_bad_from_oid() {
+        verify_bad(&PUBLIC_RSA_PEM);
+    }
+
+    #[test]
+    fn verify_dsa_good_from_oid() {
+        verify_good(&PUBLIC_DSA_PEM);
+    }
+
+    #[test]
+    fn verify_dsa_bad_from_oid() {
+        verify_bad(&PUBLIC_DSA_PEM);
     }
 }

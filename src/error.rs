@@ -1,4 +1,5 @@
 //! Possible Error Definitions
+use alloc::string::String;
 
 /// PKI Result mapping
 pub type Result<T> = core::result::Result<T, Error>;
@@ -26,6 +27,9 @@ pub enum Error {
 
     /// RSA errors
     Rsa(rsa::errors::Error),
+
+    /// Unknown
+    Unknown(String),
 }
 
 impl From<der::Error> for Error {
