@@ -1,5 +1,6 @@
 //! Possible Error Definitions
 use alloc::string::String;
+use der::asn1::ObjectIdentifier;
 
 /// PKI Result mapping
 pub type Result<T> = core::result::Result<T, Error>;
@@ -20,7 +21,7 @@ pub enum Error {
     InvalidSignature,
 
     /// Invalid OID
-    InvalidOid,
+    OidUnknown(ObjectIdentifier),
 
     /// Encoding errors
     InvalidAsn1,
@@ -42,7 +43,7 @@ impl From<der::Error> for Error {
 impl From<spki::Error> for Error {
     fn from(error: spki::Error) -> Self {
         match error {
-            spki::Error::OidUnknown { .. } => Error::InvalidOid,
+            spki::Error::OidUnknown { oid } => Error::OidUnknown(oid),
             _ => Error::InvalidAsn1,
         }
     }

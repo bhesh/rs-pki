@@ -66,7 +66,7 @@ fn verify_ecdsa<D: Digest>(
     if &public_key.algorithm.oid != &ID_EC_PUBLIC_KEY {
         return Err(Error::InvalidKey);
     }
-    let ec_type = ObjectIdentifier::from_bytes(
+    let oid = ObjectIdentifier::from_bytes(
         public_key
             .algorithm
             .parameters
@@ -75,7 +75,7 @@ fn verify_ecdsa<D: Digest>(
             .value(),
     )
     .or(Err(Error::InvalidAsn1))?;
-    match &ec_type {
+    match &oid {
         &SECP_256_K_1 => {
             let pk = ecdsa::VerifyingKey::<k256::Secp256k1>::from_sec1_bytes(
                 public_key.subject_public_key.raw_bytes(),
@@ -126,7 +126,7 @@ fn verify_ecdsa<D: Digest>(
             pk.verify_prehash(&D::digest(&msg), &sig)
                 .or(Err(Error::Verification))
         }
-        _ => Err(Error::InvalidOid),
+        _ => Err(Error::OidUnknown(oid.clone())),
     }
 }
 
@@ -178,7 +178,7 @@ pub(crate) fn verify_by_oid(
         &ECDSA_WITH_SHA_384 => verify_ecdsa::<Sha384>(public_key, msg, sig),
         #[cfg(feature = "ecdsa")]
         &ECDSA_WITH_SHA_512 => verify_ecdsa::<Sha512>(public_key, msg, sig),
-        _ => Err(Error::InvalidOid),
+        _ => Err(Error::OidUnknown(oid.clone())),
     }
 }
 
