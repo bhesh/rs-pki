@@ -181,7 +181,7 @@ mod tests {
     use x509_cert::Certificate;
 
     #[cfg(feature = "rsa")]
-    const PUBLIC_RSAWITHSHA1_PEM: &str = "-----BEGIN CERTIFICATE-----
+    const PUBLIC_RSA_WITH_SHA1_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIDDzCCAfegAwIBAgIUdzIeHcVQ0RcXEXnMJGGMzpEygI8wDQYJKoZIhvcNAQEF
 BQAwFzEVMBMGA1UEAwwMcnNhMjA0OC1zaGExMB4XDTIzMTAxNjE2NTg1NloXDTI2
 MTAxNTE2NTg1NlowFzEVMBMGA1UEAwwMcnNhMjA0OC1zaGExMIIBIjANBgkqhkiG
@@ -202,7 +202,7 @@ OG15sj8VckYupjlkJlbFBplczQ==
 -----END CERTIFICATE-----";
 
     #[cfg(all(feature = "rsa", feature = "sha2"))]
-    const PUBLIC_RSAWITHSHA256_PEM: &str = "-----BEGIN CERTIFICATE-----
+    const PUBLIC_RSA_WITH_SHA256_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIDEzCCAfugAwIBAgIUZ+evGd94OegJAuRime281jEJh7UwDQYJKoZIhvcNAQEL
 BQAwGTEXMBUGA1UEAwwOcnNhMjA0OC1zaGEyNTYwHhcNMjMwNDE0MTUwNzQzWhcN
 MjYwNDEzMTUwNzQzWjAZMRcwFQYDVQQDDA5yc2EyMDQ4LXNoYTI1NjCCASIwDQYJ
@@ -337,25 +337,25 @@ feJ1lBQG6TVQjHNympur2T0aXwEMPD8MpicY2H8=
     #[cfg(feature = "rsa")]
     #[test]
     fn verify_rsa_with_sha1_good_from_oid() {
-        verify_good(&PUBLIC_RSAWITHSHA1_PEM);
+        verify_good(&PUBLIC_RSA_WITH_SHA1_PEM);
     }
 
     #[cfg(feature = "rsa")]
     #[test]
     fn verify_rsa_with_sha1_bad_from_oid() {
-        verify_bad(&PUBLIC_RSAWITHSHA1_PEM);
+        verify_bad(&PUBLIC_RSA_WITH_SHA1_PEM);
     }
 
     #[cfg(all(feature = "rsa", feature = "sha2"))]
     #[test]
     fn verify_rsa_with_sha256_good_from_oid() {
-        verify_good(&PUBLIC_RSAWITHSHA256_PEM);
+        verify_good(&PUBLIC_RSA_WITH_SHA256_PEM);
     }
 
     #[cfg(all(feature = "rsa", feature = "sha2"))]
     #[test]
     fn verify_rsa_with_sha256_bad_from_oid() {
-        verify_bad(&PUBLIC_RSAWITHSHA256_PEM);
+        verify_bad(&PUBLIC_RSA_WITH_SHA256_PEM);
     }
 
     #[cfg(feature = "dsa")]
