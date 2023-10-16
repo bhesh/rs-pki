@@ -41,10 +41,10 @@ rand_chacha = { version = "0.3" }
 [features]
 default = [ "rsa", "sha2" ]
 dsa = [ "dep:dsa" ]
-ecdsa = [ "sha2", "dep:ecdsa", "dep:k256", "dep:p192", "dep:p224", "dep:p256", "dep:p384" ]
+ecc = [ "sha2", "dep:ecdsa", "dep:k256", "dep:p192", "dep:p224", "dep:p256", "dep:p384" ]
 rsa = [ "dep:rsa" ]
 sha2 = [ "dep:sha2" ]
-all = [ "dsa", "ecdsa", "rsa", "sha2" ]
+all = [ "dsa", "ecc", "rsa", "sha2" ]
 
 [package.metadata.docs.rs]
 all-features = true

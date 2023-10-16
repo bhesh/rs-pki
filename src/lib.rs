@@ -29,6 +29,16 @@ pub use x509_cert::{anchor, attr, ext, name, serial_number, time};
 #[cfg(feature = "rsa")]
 pub use rsa;
 
+#[cfg(feature = "ecc")]
+pub mod ecc {
+    pub use ecdsa;
+    pub use k256;
+    pub use p192;
+    pub use p224;
+    pub use p256;
+    pub use p384;
+}
+
 #[cfg(feature = "sha1")]
 pub use sha1;
 

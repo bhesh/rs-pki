@@ -6,7 +6,7 @@ use der::{
     Any, Encode,
 };
 use sha1::Sha1;
-use signature::{digest::Digest, hazmat::PrehashVerifier};
+use signature::digest::Digest;
 use spki::{DecodePublicKey, SubjectPublicKeyInfo};
 
 #[cfg(feature = "dsa")]
@@ -15,40 +15,31 @@ use const_oid::db::rfc5912::DSA_WITH_SHA_1;
 #[cfg(feature = "dsa")]
 use dsa;
 
-#[cfg(feature = "ecdsa")]
+#[cfg(feature = "ecc")]
 use const_oid::db::rfc5912::{
     ECDSA_WITH_SHA_224, ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ECDSA_WITH_SHA_512,
     ID_EC_PUBLIC_KEY, SECP_224_R_1, SECP_256_R_1, SECP_384_R_1,
 };
 
-#[cfg(feature = "ecdsa")]
+#[cfg(feature = "ecc")]
 const SECP_256_K_1: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.10");
 
-#[cfg(feature = "ecdsa")]
+#[cfg(feature = "ecc")]
 const SECP_192_R_1: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.10045.3.1.1");
 
-#[cfg(feature = "ecdsa")]
-use ecdsa;
+#[cfg(feature = "ecc")]
+use crate::ecc::{ecdsa, k256, p192, p224, p256, p384};
 
-#[cfg(feature = "ecdsa")]
-use k256;
-
-#[cfg(feature = "ecdsa")]
-use p192;
-
-#[cfg(feature = "ecdsa")]
-use p224;
-
-#[cfg(feature = "ecdsa")]
-use p256;
-
-#[cfg(feature = "ecdsa")]
-use p384;
+#[cfg(any(feature = "ecc", feature = "dsa"))]
+use signature::hazmat::PrehashVerifier;
 
 #[cfg(feature = "rsa")]
+use const_oid::db::rfc5912::SHA_1_WITH_RSA_ENCRYPTION;
+
+#[cfg(all(feature = "rsa", feature = "sha2"))]
 use const_oid::db::rfc5912::{
-    SHA_1_WITH_RSA_ENCRYPTION, SHA_224_WITH_RSA_ENCRYPTION, SHA_256_WITH_RSA_ENCRYPTION,
-    SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
+    SHA_224_WITH_RSA_ENCRYPTION, SHA_256_WITH_RSA_ENCRYPTION, SHA_384_WITH_RSA_ENCRYPTION,
+    SHA_512_WITH_RSA_ENCRYPTION,
 };
 
 #[cfg(feature = "rsa")]
@@ -57,7 +48,7 @@ use rsa::{Pkcs1v15Sign, PublicKey, RsaPublicKey};
 #[cfg(feature = "sha2")]
 use sha2::{Sha224, Sha256, Sha384, Sha512};
 
-#[cfg(feature = "ecdsa")]
+#[cfg(feature = "ecc")]
 fn verify_ecdsa<D: Digest>(
     public_key: &SubjectPublicKeyInfo<Any, BitString>,
     msg: &[u8],
@@ -170,13 +161,13 @@ pub(crate) fn verify_by_oid(
             pk.verify_prehash(&Sha1::digest(&msg), &sig)
                 .or(Err(Error::Verification))
         }
-        #[cfg(feature = "ecdsa")]
+        #[cfg(feature = "ecc")]
         &ECDSA_WITH_SHA_224 => verify_ecdsa::<Sha224>(public_key, msg, sig),
-        #[cfg(feature = "ecdsa")]
+        #[cfg(feature = "ecc")]
         &ECDSA_WITH_SHA_256 => verify_ecdsa::<Sha256>(public_key, msg, sig),
-        #[cfg(feature = "ecdsa")]
+        #[cfg(feature = "ecc")]
         &ECDSA_WITH_SHA_384 => verify_ecdsa::<Sha384>(public_key, msg, sig),
-        #[cfg(feature = "ecdsa")]
+        #[cfg(feature = "ecc")]
         &ECDSA_WITH_SHA_512 => verify_ecdsa::<Sha512>(public_key, msg, sig),
         _ => Err(Error::OidUnknown(oid.clone())),
     }
@@ -189,7 +180,29 @@ mod tests {
     use der::{DecodePem, Encode};
     use x509_cert::Certificate;
 
-    const PUBLIC_RSA2048_PEM: &str = "-----BEGIN CERTIFICATE-----
+    #[cfg(feature = "rsa")]
+    const PUBLIC_RSAWITHSHA1_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIDDzCCAfegAwIBAgIUdzIeHcVQ0RcXEXnMJGGMzpEygI8wDQYJKoZIhvcNAQEF
+BQAwFzEVMBMGA1UEAwwMcnNhMjA0OC1zaGExMB4XDTIzMTAxNjE2NTg1NloXDTI2
+MTAxNTE2NTg1NlowFzEVMBMGA1UEAwwMcnNhMjA0OC1zaGExMIIBIjANBgkqhkiG
+9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0bcwH3hqpWkDJ//DpLFb4lx+WmgaD4A40Olh
+OuzqTxhJYbSJExCEB6S55gaTISxiW9PeSpkSoJDRlHaRC4PGiq+rdwoO7zdN6NlJ
+n8BKGTvSQR/4+ABNaVLTn9kxofa6Jcxer6LV1ewA5+RsO9cP4Ozn8fviPkYwyuXB
+TgVSOCt93E7vJ/4V+iaZAV0ao5NxwPes1IbHMLApQZEjugWchzRQxPohahOpyrEe
+O76Wm1bJJoWEgYF8J+5N2g+RIr+2uKnZP5moc8lhKbcyVJyjBMz/Ss+Z3x+3JOAT
+5RFs3K/USeQVcVit9g40qeXuIQILrfQuePIzPpoLYPYAHiqAOQIDAQABo1MwUTAd
+BgNVHQ4EFgQUOCiaqJOsbief6oBOl34xwd3Z8aMwHwYDVR0jBBgwFoAUOCiaqJOs
+bief6oBOl34xwd3Z8aMwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQUFAAOC
+AQEAFcqYm+yMkhXsBHXJiYxfP2f9a3hW9/Quz+rb1BLZcGGCGtffTUyg/WVUaBWw
+S0A0rf/TnyZSKu6tZXjxxg+HKMnvp6ppZrueRtiTNkb7GZ1vFsB/oOt52MYkpD4C
+H3cUEHvZAIp65GV/vBtqnBIvdxerkffE6CfdKR3LIUiLXfqezLDqHayrtirZCrAq
+i/f0a5M+U2vUR+i7j48cTR+ILctMijLaggngB38iJ1BWpg9ekdTZMzZkeASGXlye
+8IP6NiH+uoDyYGAiGM8Uh9NkjS4xrr1JHCgEhHNZFImZReP+mooY6aZij/UKoAIN
+OG15sj8VckYupjlkJlbFBplczQ==
+-----END CERTIFICATE-----";
+
+    #[cfg(all(feature = "rsa", feature = "sha2"))]
+    const PUBLIC_RSAWITHSHA256_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIDEzCCAfugAwIBAgIUZ+evGd94OegJAuRime281jEJh7UwDQYJKoZIhvcNAQEL
 BQAwGTEXMBUGA1UEAwwOcnNhMjA0OC1zaGEyNTYwHhcNMjMwNDE0MTUwNzQzWhcN
 MjYwNDEzMTUwNzQzWjAZMRcwFQYDVQQDDA5yc2EyMDQ4LXNoYTI1NjCCASIwDQYJ
@@ -209,6 +222,7 @@ QmOnlIJzMJB81/BUqxmJPApOjFumHc4Vx362V/uCbnwHKlO1m8kgilaOsXzFz+/h
 VMhbXUpvpTLfrE9uM/R0W1X0j8YOl78=
 -----END CERTIFICATE-----";
 
+    #[cfg(feature = "dsa")]
     const PUBLIC_DSA_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIC3zCCAo+gAwIBAgIUScfg9Juor91XL05UwxHY1VUg3WMwCQYHKoZIzjgEAzAX
 MRUwEwYDVQQDDAxkc2ExMDI0LXNoYTEwHhcNMjMxMDEzMTc1MDQ5WhcNMjYxMDEy
@@ -228,6 +242,7 @@ BAMDPwAwPAIcUA9Z1qttjWiUVMy+yD2qrswW0tSVgLJbUHldLgIcDHBC1pmrCucH
 5DDxQ6OQ7sx+b4NDAkBHg4R4aQ==
 -----END CERTIFICATE-----";
 
+    #[cfg(feature = "ecc")]
     const PUBLIC_P192_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIBazCCASGgAwIBAgIUYBWAmn56bTCzDjmEmS1YTiycaCYwCgYIKoZIzj0EAwEw
 GzEZMBcGA1UEAwwQc2VjcDE5MnIxLXNoYTIyNDAeFw0yMzEwMTYxNjMwMDJaFw0y
@@ -239,6 +254,7 @@ Af8EBTADAQH/MAoGCCqGSM49BAMBAzgAMDUCGCDVZDpoSdF4ALpWix0RTQRIypLR
 cuL6xwIZANAX9XIK9UkLOjUw4MpYWb67tuOMNRTmaA==
 -----END CERTIFICATE-----";
 
+    #[cfg(feature = "ecc")]
     const PUBLIC_P256_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIBjTCCATOgAwIBAgIUYCOlE5IXQA3Pm81y/ztQp9RwQ6YwCgYIKoZIzj0EAwIw
 HDEaMBgGA1UEAwwRcHJpbWUyNTZ2MS1zaGEyNTYwHhcNMjMxMDEzMTc1MDQ5WhcN
@@ -251,6 +267,7 @@ m1STOY98Ac9eiNkciws5iT07qLV9xm2lT2os06tFygIgNoIawfR+MAMVcxpWVDpL
 1mMyecyuP5PWqLOJX68V0X8=
 -----END CERTIFICATE-----";
 
+    #[cfg(feature = "ecc")]
     const PUBLIC_SECP256_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIBhzCCAS6gAwIBAgIUNiMsVY3N8JSgKz9AC2MJ1zIBZ2wwCgYIKoZIzj0EAwIw
 GzEZMBcGA1UEAwwQc2VjcDI1NmsxLXNoYTI1NjAeFw0yMzEwMTMxNzUwNDlaFw0y
@@ -263,6 +280,7 @@ EeSunFPkrKQj8xjzIIxAWqbG0GzsWnCHmQIgRZsWYDaCnCT5el0Dd4tYWwQw6Jl2
 z1ZJeNatu6tCqXw=
 -----END CERTIFICATE-----";
 
+    #[cfg(feature = "ecc")]
     const PUBLIC_SECP384_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIByTCCAU6gAwIBAgIUC0n/qC9e8eBDn26HMHSCpDCUMEswCgYIKoZIzj0EAwMw
 GzEZMBcGA1UEAwwQc2VjcDM4NHIxLXNoYTM4NDAeFw0yMzEwMTMxNzUwNDlaFw0y
@@ -316,16 +334,28 @@ feJ1lBQG6TVQjHNympur2T0aXwEMPD8MpicY2H8=
         }
     }
 
-    #[cfg(all(feature = "rsa", feature = "sha2"))]
+    #[cfg(feature = "rsa")]
     #[test]
-    fn verify_rsa2048_good_from_oid() {
-        verify_good(&PUBLIC_RSA2048_PEM);
+    fn verify_rsa_with_sha1_good_from_oid() {
+        verify_good(&PUBLIC_RSAWITHSHA1_PEM);
+    }
+
+    #[cfg(feature = "rsa")]
+    #[test]
+    fn verify_rsa_with_sha1_bad_from_oid() {
+        verify_bad(&PUBLIC_RSAWITHSHA1_PEM);
     }
 
     #[cfg(all(feature = "rsa", feature = "sha2"))]
     #[test]
-    fn verify_rsa2048_bad_from_oid() {
-        verify_bad(&PUBLIC_RSA2048_PEM);
+    fn verify_rsa_with_sha256_good_from_oid() {
+        verify_good(&PUBLIC_RSAWITHSHA256_PEM);
+    }
+
+    #[cfg(all(feature = "rsa", feature = "sha2"))]
+    #[test]
+    fn verify_rsa_with_sha256_bad_from_oid() {
+        verify_bad(&PUBLIC_RSAWITHSHA256_PEM);
     }
 
     #[cfg(feature = "dsa")]
@@ -340,49 +370,49 @@ feJ1lBQG6TVQjHNympur2T0aXwEMPD8MpicY2H8=
         verify_bad(&PUBLIC_DSA_PEM);
     }
 
-    #[cfg(feature = "ecdsa")]
+    #[cfg(feature = "ecc")]
     #[test]
     fn verify_p192_good_from_oid() {
         verify_good(&PUBLIC_P192_PEM);
     }
 
-    #[cfg(feature = "ecdsa")]
+    #[cfg(feature = "ecc")]
     #[test]
     fn verify_p192_bad_from_oid() {
         verify_bad(&PUBLIC_P192_PEM);
     }
 
-    #[cfg(feature = "ecdsa")]
+    #[cfg(feature = "ecc")]
     #[test]
     fn verify_p256_good_from_oid() {
         verify_good(&PUBLIC_P256_PEM);
     }
 
-    #[cfg(feature = "ecdsa")]
+    #[cfg(feature = "ecc")]
     #[test]
     fn verify_p256_bad_from_oid() {
         verify_bad(&PUBLIC_P256_PEM);
     }
 
-    #[cfg(feature = "ecdsa")]
+    #[cfg(feature = "ecc")]
     #[test]
     fn verify_secp256_good_from_oid() {
         verify_good(&PUBLIC_SECP256_PEM);
     }
 
-    #[cfg(feature = "ecdsa")]
+    #[cfg(feature = "ecc")]
     #[test]
     fn verify_secp256_bad_from_oid() {
         verify_bad(&PUBLIC_SECP256_PEM);
     }
 
-    #[cfg(feature = "ecdsa")]
+    #[cfg(feature = "ecc")]
     #[test]
     fn verify_secp384_good_from_oid() {
         verify_good(&PUBLIC_SECP384_PEM);
     }
 
-    #[cfg(feature = "ecdsa")]
+    #[cfg(feature = "ecc")]
     #[test]
     fn verify_secp384_bad_from_oid() {
         verify_bad(&PUBLIC_SECP384_PEM);
