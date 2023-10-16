@@ -243,6 +243,19 @@ BAMDPwAwPAIcUA9Z1qttjWiUVMy+yD2qrswW0tSVgLJbUHldLgIcDHBC1pmrCucH
 -----END CERTIFICATE-----";
 
     #[cfg(feature = "ecc")]
+    const PUBLIC_K256_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIBjTCCATOgAwIBAgIUYCOlE5IXQA3Pm81y/ztQp9RwQ6YwCgYIKoZIzj0EAwIw
+HDEaMBgGA1UEAwwRcHJpbWUyNTZ2MS1zaGEyNTYwHhcNMjMxMDEzMTc1MDQ5WhcN
+MjYxMDEyMTc1MDQ5WjAcMRowGAYDVQQDDBFwcmltZTI1NnYxLXNoYTI1NjBZMBMG
+ByqGSM49AgEGCCqGSM49AwEHA0IABLglB6XI74Zgw5oGbj9ZruTyi1QDX0IoLOfs
+VGU9HEK+3HhedD/OotoW+gK/TGTsFSd8gs6i7DJ6prLWT6flK++jUzBRMB0GA1Ud
+DgQWBBTMS7AELri6/SOCLM6j+7F5+rRCfjAfBgNVHSMEGDAWgBTMS7AELri6/SOC
+LM6j+7F5+rRCfjAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0gAMEUCIQCZ
+m1STOY98Ac9eiNkciws5iT07qLV9xm2lT2os06tFygIgNoIawfR+MAMVcxpWVDpL
+1mMyecyuP5PWqLOJX68V0X8=
+-----END CERTIFICATE-----";
+
+    #[cfg(feature = "ecc")]
     const PUBLIC_P192_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIBazCCASGgAwIBAgIUYBWAmn56bTCzDjmEmS1YTiycaCYwCgYIKoZIzj0EAwEw
 GzEZMBcGA1UEAwwQc2VjcDE5MnIxLXNoYTIyNDAeFw0yMzEwMTYxNjMwMDJaFw0y
@@ -256,19 +269,6 @@ cuL6xwIZANAX9XIK9UkLOjUw4MpYWb67tuOMNRTmaA==
 
     #[cfg(feature = "ecc")]
     const PUBLIC_P256_PEM: &str = "-----BEGIN CERTIFICATE-----
-MIIBjTCCATOgAwIBAgIUYCOlE5IXQA3Pm81y/ztQp9RwQ6YwCgYIKoZIzj0EAwIw
-HDEaMBgGA1UEAwwRcHJpbWUyNTZ2MS1zaGEyNTYwHhcNMjMxMDEzMTc1MDQ5WhcN
-MjYxMDEyMTc1MDQ5WjAcMRowGAYDVQQDDBFwcmltZTI1NnYxLXNoYTI1NjBZMBMG
-ByqGSM49AgEGCCqGSM49AwEHA0IABLglB6XI74Zgw5oGbj9ZruTyi1QDX0IoLOfs
-VGU9HEK+3HhedD/OotoW+gK/TGTsFSd8gs6i7DJ6prLWT6flK++jUzBRMB0GA1Ud
-DgQWBBTMS7AELri6/SOCLM6j+7F5+rRCfjAfBgNVHSMEGDAWgBTMS7AELri6/SOC
-LM6j+7F5+rRCfjAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0gAMEUCIQCZ
-m1STOY98Ac9eiNkciws5iT07qLV9xm2lT2os06tFygIgNoIawfR+MAMVcxpWVDpL
-1mMyecyuP5PWqLOJX68V0X8=
------END CERTIFICATE-----";
-
-    #[cfg(feature = "ecc")]
-    const PUBLIC_SECP256_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIBhzCCAS6gAwIBAgIUNiMsVY3N8JSgKz9AC2MJ1zIBZ2wwCgYIKoZIzj0EAwIw
 GzEZMBcGA1UEAwwQc2VjcDI1NmsxLXNoYTI1NjAeFw0yMzEwMTMxNzUwNDlaFw0y
 NjEwMTIxNzUwNDlaMBsxGTAXBgNVBAMMEHNlY3AyNTZrMS1zaGEyNTYwVjAQBgcq
@@ -281,7 +281,7 @@ z1ZJeNatu6tCqXw=
 -----END CERTIFICATE-----";
 
     #[cfg(feature = "ecc")]
-    const PUBLIC_SECP384_PEM: &str = "-----BEGIN CERTIFICATE-----
+    const PUBLIC_P384_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIByTCCAU6gAwIBAgIUC0n/qC9e8eBDn26HMHSCpDCUMEswCgYIKoZIzj0EAwMw
 GzEZMBcGA1UEAwwQc2VjcDM4NHIxLXNoYTM4NDAeFw0yMzEwMTMxNzUwNDlaFw0y
 NjEwMTIxNzUwNDlaMBsxGTAXBgNVBAMMEHNlY3AzODRyMS1zaGEzODQwdjAQBgcq
@@ -372,6 +372,18 @@ feJ1lBQG6TVQjHNympur2T0aXwEMPD8MpicY2H8=
 
     #[cfg(feature = "ecc")]
     #[test]
+    fn verify_k256_good_from_oid() {
+        verify_good(&PUBLIC_K256_PEM);
+    }
+
+    #[cfg(feature = "ecc")]
+    #[test]
+    fn verify_k256_bad_from_oid() {
+        verify_bad(&PUBLIC_K256_PEM);
+    }
+
+    #[cfg(feature = "ecc")]
+    #[test]
     fn verify_p192_good_from_oid() {
         verify_good(&PUBLIC_P192_PEM);
     }
@@ -396,25 +408,13 @@ feJ1lBQG6TVQjHNympur2T0aXwEMPD8MpicY2H8=
 
     #[cfg(feature = "ecc")]
     #[test]
-    fn verify_secp256_good_from_oid() {
-        verify_good(&PUBLIC_SECP256_PEM);
+    fn verify_p384_good_from_oid() {
+        verify_good(&PUBLIC_P384_PEM);
     }
 
     #[cfg(feature = "ecc")]
     #[test]
-    fn verify_secp256_bad_from_oid() {
-        verify_bad(&PUBLIC_SECP256_PEM);
-    }
-
-    #[cfg(feature = "ecc")]
-    #[test]
-    fn verify_secp384_good_from_oid() {
-        verify_good(&PUBLIC_SECP384_PEM);
-    }
-
-    #[cfg(feature = "ecc")]
-    #[test]
-    fn verify_secp384_bad_from_oid() {
-        verify_bad(&PUBLIC_SECP384_PEM);
+    fn verify_p384_bad_from_oid() {
+        verify_bad(&PUBLIC_P384_PEM);
     }
 }
