@@ -33,7 +33,6 @@ p192 = { version = "0.13.0", optional = true, default-features = false, features
 p224 = { version = "0.13.2", optional = true, default-features = false, features = ["ecdsa"] }
 p256 = { version = "0.13.2", optional = true, default-features = false, features = ["ecdsa"] }
 p384 = { version = "0.13.0", optional = true, default-features = false, features = ["ecdsa"] }
-p521 = { version = "0.13.0", optional = true, default-features = false }
 
 [dev-dependencies]
 rand = { version = "0.8.5" }
@@ -42,7 +41,7 @@ rand_chacha = { version = "0.3" }
 [features]
 default = [ "rsa", "sha2" ]
 dsa = [ "dep:dsa" ]
-ecdsa = [ "sha2", "dep:ecdsa", "dep:k256", "dep:p192", "dep:p224", "dep:p256", "dep:p384", "dep:p521" ]
+ecdsa = [ "sha2", "dep:ecdsa", "dep:k256", "dep:p192", "dep:p224", "dep:p256", "dep:p384" ]
 rsa = [ "dep:rsa" ]
 sha2 = [ "dep:sha2" ]
 all = [ "dsa", "ecdsa", "rsa", "sha2" ]
