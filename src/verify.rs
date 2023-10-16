@@ -268,6 +268,18 @@ cuL6xwIZANAX9XIK9UkLOjUw4MpYWb67tuOMNRTmaA==
 -----END CERTIFICATE-----";
 
     #[cfg(feature = "ecc")]
+    const PUBLIC_P224_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIBdzCCASagAwIBAgIUN51vuCtbSKvr815E57F/pH3eBDowCgYIKoZIzj0EAwEw
+GzEZMBcGA1UEAwwQc2VjcDIyNHIxLXNoYTIyNDAeFw0yMzEwMTYxNzE3MjRaFw0y
+NjEwMTUxNzE3MjRaMBsxGTAXBgNVBAMMEHNlY3AyMjRyMS1zaGEyMjQwTjAQBgcq
+hkjOPQIBBgUrgQQAIQM6AAT8++n3WXDwvZJ7BN43BwNx93xoEw+6gNq1UEPdBUb7
+pdrzjxMpt/9J5PVjQMj/Pw4apL4FiPtq5KNTMFEwHQYDVR0OBBYEFP6gAuyFkYm8
+fowTBk/UAraTi7SfMB8GA1UdIwQYMBaAFP6gAuyFkYm8fowTBk/UAraTi7SfMA8G
+A1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwEDPwAwPAIcFIHZ0PKEyTHYuxeENGLJ
+20kxTw0u4vDNQvveHQIccFPxlDAbL/qKkomP8slprYdeq89l7Rqq2wuiaA==
+-----END CERTIFICATE-----";
+
+    #[cfg(feature = "ecc")]
     const PUBLIC_P256_PEM: &str = "-----BEGIN CERTIFICATE-----
 MIIBhzCCAS6gAwIBAgIUNiMsVY3N8JSgKz9AC2MJ1zIBZ2wwCgYIKoZIzj0EAwIw
 GzEZMBcGA1UEAwwQc2VjcDI1NmsxLXNoYTI1NjAeFw0yMzEwMTMxNzUwNDlaFw0y
@@ -392,6 +404,18 @@ feJ1lBQG6TVQjHNympur2T0aXwEMPD8MpicY2H8=
     #[test]
     fn verify_p192_bad_from_oid() {
         verify_bad(&PUBLIC_P192_PEM);
+    }
+
+    #[cfg(feature = "ecc")]
+    #[test]
+    fn verify_p224_good_from_oid() {
+        verify_good(&PUBLIC_P224_PEM);
+    }
+
+    #[cfg(feature = "ecc")]
+    #[test]
+    fn verify_p224_bad_from_oid() {
+        verify_bad(&PUBLIC_P224_PEM);
     }
 
     #[cfg(feature = "ecc")]
