@@ -5,6 +5,8 @@ A PKI library written in Rust.
 
 This library extends a lot of RustCrypto but adds some additional convenience functionality.
 
+Deprecated: I will be replacing this with separate crates that build up to my final (hopefully user-friendly) solution.
+
 ## Modules
 
 * cert (Certificate Objects)
